@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskService } from '../../services/taskService';
 import { userService } from '../../services/userService';
-import { notificationService } from '../../services/notificationService';
 import { Task, User } from '../../types';
-import { Plus, Edit, Trash2, CheckSquare, Timer, Upload, MessageSquare, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, CheckSquare, Timer, Upload, Eye } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import TimeTrackingModal from './TimeTrackingModal';
 import TaskSubmissionModal from './TaskSubmissionModal';
@@ -33,7 +32,7 @@ const TaskManagement: React.FC = () => {
         
         // Load tasks
         const tasksResult = await taskService.getTasks();
-        if (tasksResult.success) {
+        if (tasksResult.success && 'data' in tasksResult) {
           console.log('✅ Tasks loaded:', tasksResult.data);
           const mappedTasks = tasksResult.data.map((task: any) => ({
             id: task.id,
@@ -48,18 +47,41 @@ const TaskManagement: React.FC = () => {
             actualHours: task.actual_hours || 0,
             createdAt: new Date(task.created_at),
             updatedAt: new Date(task.updated_at),
-            submissions: task.task_submissions || [],
-            comments: task.task_comments || []
+            submissions: (task.task_submissions || []).map((submission: any) => ({
+              ...submission,
+              submittedBy: submission.submitted_by,
+              submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+              files: (submission.task_submission_files || []).map((file: any) => ({
+                id: file.id,
+                name: file.file_name,
+                size: file.file_size,
+                type: file.file_type,
+                url: file.file_path,
+                uploadedAt: file.uploaded_at,
+              })),
+            })),
+            comments: task.task_comments || [],
+            attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+              id: file.id,
+              name: file.file_name,
+              size: file.file_size,
+              type: file.file_type,
+              url: file.file_path,
+              uploadedAt: file.uploaded_at,
+              uploadedBy: file.uploaded_by,
+            }))
           }));
           setTasks(mappedTasks);
         } else {
-          console.error('❌ Failed to load tasks:', tasksResult.error);
-          setError('Failed to load tasks');
+          const errorMsg = 'error' in tasksResult ? tasksResult.error : 'Unknown error';
+          console.error('❌ Failed to load tasks:', errorMsg);
+          setError(errorMsg ?? 'Failed to load tasks');
+          return; // Stop further execution if tasks fail to load
         }
 
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult) {
           console.log('✅ Users loaded:', usersResult.data);
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
@@ -72,7 +94,8 @@ const TaskManagement: React.FC = () => {
           }));
           setUsers(mappedUsers);
         } else {
-          console.error('❌ Failed to load users:', usersResult.error);
+          const errorMsg = 'error' in usersResult ? usersResult.error : 'Unknown error';
+          console.error('❌ Failed to load users:', errorMsg);
         }
       } catch (error) {
         console.error('❌ Error loading data:', error);
@@ -111,7 +134,7 @@ const TaskManagement: React.FC = () => {
         
         // Reload tasks
         const tasksResult = await taskService.getTasks();
-        if (tasksResult.success) {
+        if (tasksResult.success && 'data' in tasksResult) {
           const mappedTasks = tasksResult.data.map((task: any) => ({
             id: task.id,
             title: task.title,
@@ -125,28 +148,37 @@ const TaskManagement: React.FC = () => {
             actualHours: task.actual_hours || 0,
             createdAt: new Date(task.created_at),
             updatedAt: new Date(task.updated_at),
-            submissions: task.task_submissions || [],
-            comments: task.task_comments || []
+            submissions: (task.task_submissions || []).map((submission: any) => ({
+              ...submission,
+              submittedBy: submission.submitted_by,
+              submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+              files: (submission.task_submission_files || []).map((file: any) => ({
+                id: file.id,
+                name: file.file_name,
+                size: file.file_size,
+                type: file.file_type,
+                url: file.file_path,
+                uploadedAt: file.uploaded_at,
+              })),
+            })),
+            comments: task.task_comments || [],
+            attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+              id: file.id,
+              name: file.file_name,
+              size: file.file_size,
+              type: file.file_type,
+              url: file.file_path,
+              uploadedAt: file.uploaded_at,
+              uploadedBy: file.uploaded_by,
+            }))
           }));
           setTasks(mappedTasks);
         }
-
-        // Create notification for the assigned user
-        const assignedUser = users.find(u => u.id === taskData.assignedTo);
-        const assignedByUser = users.find(u => u.id === taskData.assignedBy);
-        
-        if (assignedUser && assignedByUser && assignedUser.id !== assignedByUser.id) {
-          await notificationService.createNotification({
-            userId: assignedUser.id,
-            title: 'New Task Assigned',
-            message: `${assignedByUser.name} assigned you a new task: "${taskData.title}"`,
-            type: 'task_assigned',
-            read: false
-          });
-        }
       } else {
-        console.error('❌ Failed to create task:', result.error);
-        setError(result.error || 'Failed to create task');
+        // Fix: result may not have 'error' property, so check for it safely
+        const errorMsg = 'error' in result && result.error ? result.error : 'Failed to create task';
+        console.error('❌ Failed to create task:', errorMsg);
+        setError(errorMsg);
       }
     } catch (error) {
       console.error('❌ Error creating task:', error);
@@ -163,10 +195,53 @@ const TaskManagement: React.FC = () => {
         const result = await taskService.deleteTask(taskId);
         if (result.success) {
           console.log('✅ Task deleted successfully');
-          setTasks(prev => prev.filter(t => t.id !== taskId));
+          // Reload tasks from backend to ensure UI is in sync
+          const tasksResult = await taskService.getTasks();
+          if (tasksResult.success && 'data' in tasksResult) {
+            const mappedTasks = tasksResult.data.map((task: any) => ({
+              id: task.id,
+              title: task.title,
+              description: task.description,
+              assignedTo: task.assigned_to,
+              assignedBy: task.assigned_by,
+              status: task.status,
+              priority: task.priority,
+              dueDate: task.due_date ? new Date(task.due_date) : undefined,
+              estimatedHours: task.estimated_hours,
+              actualHours: task.actual_hours || 0,
+              createdAt: new Date(task.created_at),
+              updatedAt: new Date(task.updated_at),
+              submissions: (task.task_submissions || []).map((submission: any) => ({
+                ...submission,
+                submittedBy: submission.submitted_by,
+                submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                files: (submission.task_submission_files || []).map((file: any) => ({
+                  id: file.id,
+                  name: file.file_name,
+                  size: file.file_size,
+                  type: file.file_type,
+                  url: file.file_path,
+                  uploadedAt: file.uploaded_at,
+                })),
+              })),
+              comments: task.task_comments || [],
+              attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                id: file.id,
+                name: file.file_name,
+                size: file.file_size,
+                type: file.file_type,
+                url: file.file_path,
+                uploadedAt: file.uploaded_at,
+                uploadedBy: file.uploaded_by,
+              }))
+            }));
+            setTasks(mappedTasks);
+          }
         } else {
-          console.error('❌ Failed to delete task:', result.error);
-          setError(result.error || 'Failed to delete task');
+          // Fix: result may not have 'error' property, so check for it safely
+          const errorMsg = 'error' in result && result.error ? result.error : 'Failed to delete task';
+          console.error('❌ Failed to delete task:', errorMsg);
+          setError(errorMsg);
         }
       } catch (error) {
         console.error('❌ Error deleting task:', error);
@@ -191,35 +266,9 @@ const TaskManagement: React.FC = () => {
         setTasks(prev => prev.map(t => 
           t.id === taskId ? { ...t, status: newStatus, updatedAt: new Date() } : t
         ));
-
-        // Create notifications for status changes
-        if (user && task.status !== newStatus) {
-          // Notify the person who assigned the task (if different from updater)
-          const assignedByUser = users.find(u => u.id === task.assignedBy);
-          if (assignedByUser && assignedByUser.id !== user.id) {
-            await notificationService.createNotification({
-              userId: assignedByUser.id,
-              title: 'Task Status Updated',
-              message: `${user.name} updated task "${task.title}" from ${task.status.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`,
-              type: 'task_updated',
-              read: false
-            });
-          }
-
-          // Special notification for task completion
-          if (newStatus === 'completed' && assignedByUser && assignedByUser.id !== user.id) {
-            await notificationService.createNotification({
-              userId: assignedByUser.id,
-              title: 'Task Completed',
-              message: `${user.name} completed the task: "${task.title}"`,
-              type: 'task_completed',
-              read: false
-            });
-          }
-        }
       } else {
-        console.error('❌ Failed to update task status:', result.error);
-        setError(result.error || 'Failed to update task status');
+        console.error('❌ Failed to update task status:', (result as any).error);
+        setError('Failed to update task status');
       }
     } catch (error) {
       console.error('❌ Error updating task status:', error);
@@ -254,7 +303,8 @@ const TaskManagement: React.FC = () => {
   const canCreateTasks = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'project_manager';
   const canDeleteTask = (task: Task) => {
     if (user?.role === 'employee') return false;
-    return task.assignedBy === user?.id || user?.role === 'admin' || user?.role === 'manager';
+    if (user?.role === 'admin') return true;
+    return task.assignedBy === user?.id || user?.role === 'manager';
   };
 
   if (loading) {
@@ -324,7 +374,7 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-0 z-10">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -358,24 +408,32 @@ const TaskManagement: React.FC = () => {
                   <td className="px-6 py-4">
                     <div>
                       <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                      <div className="text-sm text-gray-500">{task.description}</div>
+                      <div className="text-sm text-gray-500 truncate" style={{ maxWidth: 400 }}>
+                        {task.description.length > 80 ? `${task.description.slice(0, 80)}...` : task.description}
+                      </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {getUserName(task.assignedTo)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <select
-                      value={task.status}
-                      onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
-                      className={`text-xs font-medium rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-amber-500 ${getStatusColor(task.status)}`}
-                      disabled={task.assignedTo !== user?.id && user?.role !== 'admin' && user?.role !== 'manager'}
-                    >
-                      <option value="todo">To Do</option>
-                      <option value="in_progress">In Progress</option>
-                      <option value="review">Review</option>
-                      <option value="completed">Completed</option>
-                    </select>
+                    {user?.role === 'employee' ? (
+                      <span className={`text-xs font-medium rounded-full px-2 py-1 ${getStatusColor(task.status)}`}>
+                        {task.status.replace('_', ' ')}
+                      </span>
+                    ) : (
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
+                        className={`text-xs font-medium rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-amber-500 ${getStatusColor(task.status)}`}
+                        disabled={task.assignedTo !== user?.id && user?.role !== 'admin' && user?.role !== 'manager'}
+                      >
+                        <option value="todo">To Do</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="review">Review</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
@@ -466,7 +524,7 @@ const TaskManagement: React.FC = () => {
         <TimeTrackingModal
           task={timeTrackingTask}
           onClose={() => setTimeTrackingTask(null)}
-          onSubmit={async (hours, description) => {
+          onSubmit={async (hours) => {
             // In a real app, you would save time entries to Supabase
             // For now, just update the task's actual hours
             const currentHours = timeTrackingTask.actualHours || 0;
@@ -474,7 +532,7 @@ const TaskManagement: React.FC = () => {
             
             // Reload tasks
             const tasksResult = await taskService.getTasks();
-            if (tasksResult.success) {
+            if (tasksResult.success && 'data' in tasksResult) {
               const mappedTasks = tasksResult.data.map((task: any) => ({
                 id: task.id,
                 title: task.title,
@@ -488,8 +546,29 @@ const TaskManagement: React.FC = () => {
                 actualHours: task.actual_hours || 0,
                 createdAt: new Date(task.created_at),
                 updatedAt: new Date(task.updated_at),
-                submissions: task.task_submissions || [],
-                comments: task.task_comments || []
+                submissions: (task.task_submissions || []).map((submission: any) => ({
+                  ...submission,
+                  submittedBy: submission.submitted_by,
+                  submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                  files: (submission.task_submission_files || []).map((file: any) => ({
+                    id: file.id,
+                    name: file.file_name,
+                    size: file.file_size,
+                    type: file.file_type,
+                    url: file.file_path,
+                    uploadedAt: file.uploaded_at,
+                  })),
+                })),
+                comments: task.task_comments || [],
+                attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                  id: file.id,
+                  name: file.file_name,
+                  size: file.file_size,
+                  type: file.file_type,
+                  url: file.file_path,
+                  uploadedAt: file.uploaded_at,
+                  uploadedBy: file.uploaded_by,
+                }))
               }));
               setTasks(mappedTasks);
             }
@@ -513,7 +592,7 @@ const TaskManagement: React.FC = () => {
             
             // Reload tasks
             const tasksResult = await taskService.getTasks();
-            if (tasksResult.success) {
+            if (tasksResult.success && 'data' in tasksResult) {
               const mappedTasks = tasksResult.data.map((task: any) => ({
                 id: task.id,
                 title: task.title,
@@ -527,27 +606,34 @@ const TaskManagement: React.FC = () => {
                 actualHours: task.actual_hours || 0,
                 createdAt: new Date(task.created_at),
                 updatedAt: new Date(task.updated_at),
-                submissions: task.task_submissions || [],
-                comments: task.task_comments || []
+                submissions: (task.task_submissions || []).map((submission: any) => ({
+                  ...submission,
+                  submittedBy: submission.submitted_by,
+                  submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                  files: (submission.task_submission_files || []).map((file: any) => ({
+                    id: file.id,
+                    name: file.file_name,
+                    size: file.file_size,
+                    type: file.file_type,
+                    url: file.file_path,
+                    uploadedAt: file.uploaded_at,
+                  })),
+                })),
+                comments: task.task_comments || [],
+                attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                  id: file.id,
+                  name: file.file_name,
+                  size: file.file_size,
+                  type: file.file_type,
+                  url: file.file_path,
+                  uploadedAt: file.uploaded_at,
+                  uploadedBy: file.uploaded_by,
+                }))
               }));
               setTasks(mappedTasks);
             }
             
             setSubmissionTask(null);
-
-            // Create notification for task submission
-            if (user) {
-              const assignedByUser = users.find(u => u.id === submissionTask.assignedBy);
-              if (assignedByUser && assignedByUser.id !== user.id) {
-                await notificationService.createNotification({
-                  userId: assignedByUser.id,
-                  title: 'Task Submission Received',
-                  message: `${user.name} submitted work for task: "${submissionTask.title}"`,
-                  type: 'general',
-                  read: false
-                });
-              }
-            }
           }}
         />
       )}
@@ -562,7 +648,7 @@ const TaskManagement: React.FC = () => {
             
             // Reload tasks
             const tasksResult = await taskService.getTasks();
-            if (tasksResult.success) {
+            if (tasksResult.success && 'data' in tasksResult) {
               const mappedTasks = tasksResult.data.map((task: any) => ({
                 id: task.id,
                 title: task.title,
@@ -576,11 +662,32 @@ const TaskManagement: React.FC = () => {
                 actualHours: task.actual_hours || 0,
                 createdAt: new Date(task.created_at),
                 updatedAt: new Date(task.updated_at),
-                submissions: task.task_submissions || [],
-                comments: task.task_comments || []
+                submissions: (task.task_submissions || []).map((submission: any) => ({
+                  ...submission,
+                  submittedBy: submission.submitted_by,
+                  submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                  files: (submission.task_submission_files || []).map((file: any) => ({
+                    id: file.id,
+                    name: file.file_name,
+                    size: file.file_size,
+                    type: file.file_type,
+                    url: file.file_path,
+                    uploadedAt: file.uploaded_at,
+                  })),
+                })),
+                comments: task.task_comments || [],
+                attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                  id: file.id,
+                  name: file.file_name,
+                  size: file.file_size,
+                  type: file.file_type,
+                  url: file.file_path,
+                  uploadedAt: file.uploaded_at,
+                  uploadedBy: file.uploaded_by,
+                }))
               }));
               setTasks(mappedTasks);
-              setDetailsTask(mappedTasks.find(t => t.id === detailsTask.id) || null);
+              setDetailsTask(mappedTasks.find((t: typeof mappedTasks[number]) => t.id === detailsTask.id) || null);
             }
           }}
         />

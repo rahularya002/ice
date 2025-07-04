@@ -4,7 +4,7 @@ import { userService } from '../../services/userService';
 import { taskService } from '../../services/taskService';
 import { timeEntryService } from '../../services/timeEntryService';
 import { User, Task, TimeEntry } from '../../types';
-import { BarChart3, TrendingUp, Clock, Target, Award, Users } from 'lucide-react';
+import { BarChart3, Clock, Target, Award, Users } from 'lucide-react';
 
 interface PerformanceMetrics {
   userId: string;
@@ -40,7 +40,7 @@ const PerformanceReports: React.FC = () => {
         
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult) {
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
             email: profile.email,
@@ -55,7 +55,7 @@ const PerformanceReports: React.FC = () => {
 
         // Load tasks
         const tasksResult = await taskService.getTasks();
-        if (tasksResult.success) {
+        if (tasksResult.success && 'data' in tasksResult) {
           const mappedTasks = tasksResult.data.map((task: any) => ({
             id: task.id,
             title: task.title,
@@ -77,7 +77,7 @@ const PerformanceReports: React.FC = () => {
 
         // Load time entries
         const timeEntriesResult = await timeEntryService.getTimeEntries();
-        if (timeEntriesResult.success) {
+        if (timeEntriesResult.success && 'data' in timeEntriesResult) {
           const mappedTimeEntries = timeEntriesResult.data.map((entry: any) => ({
             id: entry.id,
             taskId: entry.task_id,

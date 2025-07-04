@@ -20,7 +20,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose
         setLoading(true);
         try {
           const result = await notificationService.getNotifications(user.id);
-          if (result.success) {
+          if (result.success && 'data' in result) {
             const mappedNotifications = result.data.map((notification: any) => ({
               id: notification.id,
               userId: notification.user_id,

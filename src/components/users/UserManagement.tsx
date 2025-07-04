@@ -40,7 +40,7 @@ const UserManagement: React.FC = () => {
         
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult && usersResult.data) {
           console.log('✅ Users loaded:', usersResult.data);
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
@@ -52,14 +52,14 @@ const UserManagement: React.FC = () => {
             createdAt: new Date(profile.created_at)
           }));
           setUsers(mappedUsers);
-        } else {
+        } else if ('error' in usersResult && usersResult.error) {
           console.error('❌ Failed to load users:', usersResult.error);
           setError('Failed to load users');
         }
 
         // Load departments
         const departmentsResult = await departmentService.getDepartments();
-        if (departmentsResult.success) {
+        if (departmentsResult.success && 'data' in departmentsResult && departmentsResult.data) {
           console.log('✅ Departments loaded:', departmentsResult.data);
           const mappedDepartments = departmentsResult.data.map((dept: any) => ({
             id: dept.id,
@@ -69,7 +69,7 @@ const UserManagement: React.FC = () => {
             createdAt: new Date(dept.created_at)
           }));
           setDepartments(mappedDepartments);
-        } else {
+        } else if ('error' in departmentsResult && departmentsResult.error) {
           console.error('❌ Failed to load departments:', departmentsResult.error);
         }
       } catch (error) {
@@ -97,13 +97,13 @@ const UserManagement: React.FC = () => {
         departmentId: userData.departmentId
       });
 
-      if (result.success) {
+      if (result.success && 'data' in result && result.data) {
         console.log('✅ User created successfully');
         setIsAddModalOpen(false);
         
         // Reload users to get the updated list
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult && usersResult.data) {
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
             email: profile.email,
@@ -114,8 +114,11 @@ const UserManagement: React.FC = () => {
             createdAt: new Date(profile.created_at)
           }));
           setUsers(mappedUsers);
+        } else if ('error' in usersResult && usersResult.error) {
+          console.error('❌ Failed to load users:', usersResult.error);
+          setError('Failed to load users');
         }
-      } else {
+      } else if ('error' in result && result.error) {
         console.error('❌ Failed to create user:', result.error);
         setError(result.error || 'Failed to create user');
       }
@@ -131,7 +134,7 @@ const UserManagement: React.FC = () => {
     
     try {
       const result = await userService.updateUser(userId, userData);
-      if (result.success) {
+      if (result.success && 'data' in result && result.data) {
         console.log('✅ User updated successfully');
         setEditingUser(null);
         
@@ -141,7 +144,7 @@ const UserManagement: React.FC = () => {
             ? { ...u, ...userData, updatedAt: new Date() }
             : u
         ));
-      } else {
+      } else if ('error' in result && result.error) {
         console.error('❌ Failed to update user:', result.error);
         setError(result.error || 'Failed to update user');
       }
@@ -158,10 +161,10 @@ const UserManagement: React.FC = () => {
       
       try {
         const result = await userService.deleteUser(userId);
-        if (result.success) {
+        if (result.success && 'data' in result && result.data) {
           console.log('✅ User deleted successfully');
           setUsers(prev => prev.filter(u => u.id !== userId));
-        } else {
+        } else if ('error' in result && result.error) {
           console.error('❌ Failed to delete user:', result.error);
           setError(result.error || 'Failed to delete user');
         }
@@ -229,7 +232,7 @@ const UserManagement: React.FC = () => {
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 sticky top-0 z-10 bg-white">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Member Management</h1>
           <p className="text-gray-600 mt-1">Manage system members and their roles</p>
@@ -251,7 +254,7 @@ const UserManagement: React.FC = () => {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6 sticky top-0 z-10">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="relative">

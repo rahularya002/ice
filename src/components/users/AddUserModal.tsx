@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Department, User, Designation } from '../../types';
 import { designationService } from '../../services/designationService';
 
@@ -30,7 +30,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSubmit, departme
       try {
         console.log('🔄 Loading designations from Supabase...');
         const result = await designationService.getDesignations();
-        if (result.success) {
+        if (result.success && 'data' in result) {
           console.log('✅ Designations loaded:', result.data);
           const mappedDesignations = result.data.map((designation: any) => ({
             id: designation.id,
@@ -42,7 +42,7 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSubmit, departme
           }));
           setDesignations(mappedDesignations);
         } else {
-          console.error('❌ Failed to load designations:', result.error);
+          console.error('❌ Failed to load designations:', result && 'error' in result ? result.error : result);
         }
       } catch (error) {
         console.error('❌ Error loading designations:', error);
@@ -74,7 +74,10 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ onClose, onSubmit, departme
           console.log('✅ Custom designation created successfully');
           finalDesignation = customDesignation.trim();
         } else {
-          console.error('❌ Failed to create custom designation:', result.error);
+          console.error(
+            '❌ Failed to create custom designation:',
+            result && 'error' in result ? result.error : result
+          );
           alert('Failed to create custom designation. Please try again.');
           setLoading(false);
           return;

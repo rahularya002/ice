@@ -9,6 +9,7 @@ export const taskService = {
         .from('tasks')
         .select(`
           *,
+          task_files:task_files(*),
           task_submissions (
             *,
             task_submission_files (*)
@@ -27,7 +28,13 @@ export const taskService = {
         return handleSupabaseError(error);
       }
 
-      return handleSupabaseSuccess(data);
+      // Map attachments for each task
+      const tasksWithAttachments = (data || []).map(task => ({
+        ...task,
+        attachments: task.task_files || []
+      }));
+
+      return handleSupabaseSuccess(tasksWithAttachments);
     } catch (error) {
       return handleSupabaseError(error);
     }
@@ -56,7 +63,35 @@ export const taskService = {
         return handleSupabaseError(error);
       }
 
-      return handleSupabaseSuccess(data);
+      // Insert attachments into task_files if any
+      if (taskData.attachments && taskData.attachments.length > 0) {
+        const fileInserts = taskData.attachments.map(file => ({
+          task_id: data.id,
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          file_path: file.url,
+          uploaded_by: taskData.assignedBy,
+          uploaded_at: (file.uploadedAt || new Date()).toISOString(),
+        }));
+        const { error: filesError } = await supabase
+          .from('task_files')
+          .insert(fileInserts);
+        if (filesError) {
+          console.error('Failed to add task files:', filesError);
+        }
+      }
+
+      // Fetch the task again to include attachments
+      const { data: fullTask, error: fetchError } = await supabase
+        .from('tasks')
+        .select(`*, task_files:task_files(*)`)
+        .eq('id', data.id)
+        .single();
+      if (fetchError) {
+        return handleSupabaseError(fetchError);
+      }
+      return handleSupabaseSuccess({ ...fullTask, attachments: fullTask.task_files || [] });
     } catch (error) {
       return handleSupabaseError(error);
     }

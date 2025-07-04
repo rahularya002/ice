@@ -38,8 +38,11 @@ const TimeTrackingModal: React.FC<TimeTrackingModalProps> = ({ task, onClose, on
       if (result.success) {
         console.log('✅ Time entry created successfully');
         onSubmit(parseFloat(hours), description);
-      } else {
+      } else if ('error' in result) {
         console.error('❌ Failed to create time entry:', result.error);
+        alert('Failed to log time. Please try again.');
+      } else {
+        console.error('❌ Failed to create time entry: Unknown error');
         alert('Failed to log time. Please try again.');
       }
     } catch (error) {

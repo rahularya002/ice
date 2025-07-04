@@ -1,4 +1,4 @@
-import { User, Department, Project, Task, ChatMessage, TimeEntry, Notification, PerformanceMetrics, TaskSubmission, TaskComment, Designation } from '../types';
+import { User, Department, Task, ChatMessage, TimeEntry, Notification, PerformanceMetrics, TaskSubmission, TaskComment, Designation } from '../types';
 
 const STORAGE_KEYS = {
   USERS: 'office_users',
@@ -132,7 +132,7 @@ const initializeDefaultData = () => {
         estimatedHours: 8,
         actualHours: 7.5,
         dueDate: new Date(Date.now() - 86400000), // Yesterday
-        createdAt: new Date(Date.now() - 172800000), // 2 days ago
+        createdAt: new Date(Date.now() - 172800000), // 2 days ago 
         updatedAt: new Date(Date.now() - 86400000),
         submissions: [],
         comments: [],
@@ -240,36 +240,6 @@ export const storage = {
     const departments = storage.getDepartments();
     departments.push(department);
     storage.saveDepartments(departments);
-  },
-
-  // Projects
-  getProjects: (): Project[] => {
-    const projects = localStorage.getItem(STORAGE_KEYS.PROJECTS);
-    return projects ? JSON.parse(projects).map((p: any) => ({ 
-      ...p, 
-      createdAt: new Date(p.createdAt),
-      startDate: new Date(p.startDate),
-      endDate: p.endDate ? new Date(p.endDate) : undefined
-    })) : [];
-  },
-
-  saveProjects: (projects: Project[]) => {
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(projects));
-  },
-
-  addProject: (project: Project) => {
-    const projects = storage.getProjects();
-    projects.push(project);
-    storage.saveProjects(projects);
-  },
-
-  updateProject: (projectId: string, updates: Partial<Project>) => {
-    const projects = storage.getProjects();
-    const index = projects.findIndex(p => p.id === projectId);
-    if (index !== -1) {
-      projects[index] = { ...projects[index], ...updates };
-      storage.saveProjects(projects);
-    }
   },
 
   // Tasks

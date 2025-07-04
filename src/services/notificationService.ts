@@ -27,7 +27,7 @@ export const notificationService = {
       const { data, error } = await supabase
         .from('notifications')
         .insert({
-          user_id: notificationData.userId,
+          user_id: notificationData.user_id,
           title: notificationData.title,
           message: notificationData.message,
           type: notificationData.type,
@@ -115,7 +115,7 @@ export const notificationService = {
   // Create task assigned notification
   createTaskAssignedNotification: async (task: any, assignedUser: any, assignedByUser: any) => {
     const notificationData = {
-      userId: assignedUser.id,
+      user_id: assignedUser.id,
       title: 'New Task Assigned',
       message: `${assignedByUser.name} assigned you a new task: "${task.title}"`,
       type: 'task_assigned' as const,
@@ -136,9 +136,8 @@ export const notificationService = {
 
   // Create task updated notification
   createTaskUpdatedNotification: async (task: any, updatedByUser: any, oldStatus: string, newStatus: string) => {
-    // Implementation for task update notifications
     const notificationData = {
-      userId: task.assignedBy,
+      user_id: task.assignedBy,
       title: 'Task Status Updated',
       message: `${updatedByUser.name} updated task "${task.title}" from ${oldStatus.replace('_', ' ')} to ${newStatus.replace('_', ' ')}`,
       type: 'task_updated' as const,
@@ -151,7 +150,7 @@ export const notificationService = {
   // Create task completed notification
   createTaskCompletedNotification: async (task: any, completedByUser: any) => {
     const notificationData = {
-      userId: task.assignedBy,
+      user_id: task.assignedBy,
       title: 'Task Completed',
       message: `${completedByUser.name} completed the task: "${task.title}"`,
       type: 'task_completed' as const,
@@ -171,9 +170,9 @@ export const notificationService = {
   },
 
   // Create general notification
-  createGeneralNotification: async (userId: string, title: string, message: string) => {
+  createGeneralNotification: async (user_id: string, title: string, message: string) => {
     const notificationData = {
-      userId,
+      user_id,
       title,
       message,
       type: 'general' as const,

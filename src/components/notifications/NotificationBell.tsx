@@ -14,7 +14,7 @@ const NotificationBell: React.FC = () => {
       const updateUnreadCount = async () => {
         try {
           const result = await notificationService.getNotifications(user.id);
-          if (result.success) {
+          if (result.success && 'data' in result && Array.isArray(result.data)) {
             const unread = result.data.filter((n: any) => !n.read).length;
             setUnreadCount(unread);
           }

@@ -8,7 +8,6 @@ import {
   Users, 
   Building, 
   CheckSquare, 
-  TrendingUp,
   Clock,
   AlertCircle,
   Calendar,
@@ -33,7 +32,7 @@ const Dashboard: React.FC = () => {
         
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult) {
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
             email: profile.email,
@@ -48,7 +47,7 @@ const Dashboard: React.FC = () => {
 
         // Load departments
         const departmentsResult = await departmentService.getDepartments();
-        if (departmentsResult.success) {
+        if (departmentsResult.success && 'data' in departmentsResult) {
           const mappedDepartments = departmentsResult.data.map((dept: any) => ({
             id: dept.id,
             name: dept.name,
@@ -61,7 +60,7 @@ const Dashboard: React.FC = () => {
 
         // Load tasks
         const tasksResult = await taskService.getTasks();
-        if (tasksResult.success) {
+        if (tasksResult.success && 'data' in tasksResult) {
           const mappedTasks = tasksResult.data.map((task: any) => ({
             id: task.id,
             title: task.title,
@@ -212,7 +211,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 sticky top-0 z-10 bg-white">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">

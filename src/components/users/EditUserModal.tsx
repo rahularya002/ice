@@ -29,7 +29,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
       try {
         console.log('🔄 Loading designations from Supabase...');
         const result = await designationService.getDesignations();
-        if (result.success) {
+        if (result.success && 'data' in result && Array.isArray(result.data)) {
           console.log('✅ Designations loaded:', result.data);
           const mappedDesignations = result.data.map((designation: any) => ({
             id: designation.id,
@@ -41,7 +41,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
           }));
           setDesignations(mappedDesignations);
         } else {
-          console.error('❌ Failed to load designations:', result.error);
+          // Fix: result may not have 'error' property, so log the whole result for debugging
+          console.error('❌ Failed to load designations:', result);
         }
       } catch (error) {
         console.error('❌ Error loading designations:', error);
@@ -73,7 +74,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
           console.log('✅ Custom designation created successfully');
           finalDesignation = customDesignation.trim();
         } else {
-          console.error('❌ Failed to create custom designation:', result.error);
+          // Fix: result may not have 'error' property, so log the whole result for debugging
+          console.error('❌ Failed to create custom designation:', result);
           alert('Failed to create custom designation. Please try again.');
           setLoading(false);
           return;

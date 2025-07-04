@@ -39,7 +39,7 @@ const DepartmentManagement: React.FC = () => {
         
         // Load departments
         const departmentsResult = await departmentService.getDepartments();
-        if (departmentsResult.success) {
+        if (departmentsResult.success && 'data' in departmentsResult && departmentsResult.data) {
           console.log('✅ Departments loaded:', departmentsResult.data);
           const mappedDepartments = departmentsResult.data.map((dept: any) => ({
             id: dept.id,
@@ -49,14 +49,14 @@ const DepartmentManagement: React.FC = () => {
             createdAt: new Date(dept.created_at)
           }));
           setDepartments(mappedDepartments);
-        } else {
+        } else if ('error' in departmentsResult && departmentsResult.error) {
           console.error('❌ Failed to load departments:', departmentsResult.error);
           setError('Failed to load departments');
         }
 
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult && usersResult.data) {
           console.log('✅ Users loaded:', usersResult.data);
           const mappedUsers = usersResult.data.map((profile: any) => ({
             id: profile.id,
@@ -68,7 +68,7 @@ const DepartmentManagement: React.FC = () => {
             createdAt: new Date(profile.created_at)
           }));
           setUsers(mappedUsers);
-        } else {
+        } else if ('error' in usersResult && usersResult.error) {
           console.error('❌ Failed to load users:', usersResult.error);
         }
       } catch (error) {
@@ -88,13 +88,13 @@ const DepartmentManagement: React.FC = () => {
     
     try {
       const result = await departmentService.createDepartment(departmentData);
-      if (result.success) {
+      if (result.success && 'data' in result && result.data) {
         console.log('✅ Department created successfully');
         setIsAddModalOpen(false);
         
         // Reload departments
         const departmentsResult = await departmentService.getDepartments();
-        if (departmentsResult.success) {
+        if (departmentsResult.success && 'data' in departmentsResult && departmentsResult.data) {
           const mappedDepartments = departmentsResult.data.map((dept: any) => ({
             id: dept.id,
             name: dept.name,
@@ -104,7 +104,7 @@ const DepartmentManagement: React.FC = () => {
           }));
           setDepartments(mappedDepartments);
         }
-      } else {
+      } else if ('error' in result && result.error) {
         console.error('❌ Failed to create department:', result.error);
         setError(result.error || 'Failed to create department');
       }
@@ -120,7 +120,7 @@ const DepartmentManagement: React.FC = () => {
     
     try {
       const result = await departmentService.updateDepartment(departmentId, departmentData);
-      if (result.success) {
+      if (result.success && 'data' in result && result.data) {
         console.log('✅ Department updated successfully');
         setEditingDepartment(null);
         
@@ -130,7 +130,7 @@ const DepartmentManagement: React.FC = () => {
             ? { ...d, ...departmentData }
             : d
         ));
-      } else {
+      } else if ('error' in result && result.error) {
         console.error('❌ Failed to update department:', result.error);
         setError(result.error || 'Failed to update department');
       }
@@ -153,7 +153,7 @@ const DepartmentManagement: React.FC = () => {
           
           // Reload users to reflect department changes
           const usersResult = await userService.getUsers();
-          if (usersResult.success) {
+          if (usersResult.success && 'data' in usersResult && usersResult.data) {
             const mappedUsers = usersResult.data.map((profile: any) => ({
               id: profile.id,
               email: profile.email,
@@ -166,8 +166,8 @@ const DepartmentManagement: React.FC = () => {
             setUsers(mappedUsers);
           }
         } else {
-          console.error('❌ Failed to delete department:', result.error);
-          setError(result.error || 'Failed to delete department');
+          console.error('❌ Failed to delete department:', 'error' in result ? result.error : undefined);
+          setError(('error' in result && result.error) ? result.error : 'Failed to delete department');
         }
       } catch (error) {
         console.error('❌ Error deleting department:', error);
@@ -202,7 +202,7 @@ const DepartmentManagement: React.FC = () => {
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8 sticky top-0 z-10 bg-white">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Department Management</h1>
           <p className="text-gray-600 mt-1">Manage departments and their structure</p>

@@ -21,17 +21,35 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
 
   const maxFileSize = 10 * 1024 * 1024; // 10MB
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files || []);
-    
-    if (selectedFiles.length === 0) return;
+  const CLOUDINARY_UPLOAD_PRESET = 'task-files';
+  const CLOUDINARY_CLOUD_NAME = 'dom7v8fgf';
 
+  async function uploadFileToCloudinary(file: File) {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) throw new Error('Cloudinary upload failed');
+    return await response.json();
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (files.length + selectedFiles.length > 2) {
+      setErrorMessage('You can only upload up to 2 files.');
+      return;
+    }
+    if (selectedFiles.length === 0) return;
     setUploadStatus('uploading');
     setErrorMessage('');
-
     try {
       const newFiles: SubmissionFile[] = [];
-
       for (const file of selectedFiles) {
         // Validate file size
         if (file.size > maxFileSize) {
@@ -44,34 +62,24 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
           throw new Error(`File type "${fileExtension}" is not allowed.`);
         }
 
-        // In a real application, you would upload the file to a server
-        // For this demo, we'll create a mock file URL
-        const mockFileUrl = `mock://uploads/${Date.now()}-${file.name}`;
-
-        const submissionFile: SubmissionFile = {
+        const result = await uploadFileToCloudinary(file);
+        newFiles.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          url: mockFileUrl,
+          name: result.original_filename,
+          size: result.bytes,
+          type: result.format,
+          url: result.secure_url,
           uploadedAt: new Date(),
-        };
-
-        newFiles.push(submissionFile);
+        });
       }
-
       setFiles(prev => [...prev, ...newFiles]);
       setUploadStatus('success');
-      
-      // Reset status after 2 seconds
       setTimeout(() => setUploadStatus('idle'), 2000);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Upload failed');
+      setErrorMessage('Upload failed');
       setUploadStatus('error');
       setTimeout(() => setUploadStatus('idle'), 3000);
     }
-
-    // Reset input
     event.target.value = '';
   };
 

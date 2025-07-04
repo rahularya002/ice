@@ -41,6 +41,7 @@ export interface Task {
   updatedAt: Date;
   submissions?: TaskSubmission[];
   comments?: TaskComment[];
+  attachments?: SubmissionFile[];
 }
 
 export interface TaskSubmission {
@@ -83,7 +84,7 @@ export interface TimeEntry {
 
 export interface Notification {
   id: string;
-  userId: string;
+  user_id: string;
   title: string;
   message: string;
   type: 'task_assigned' | 'task_updated' | 'task_completed' | 'project_update' | 'general';
@@ -117,4 +118,14 @@ export interface AuthContextType {
   logout: () => void;
   register: (userData: Omit<User, 'id' | 'createdAt'> & { password: string }) => Promise<boolean>;
   loading?: boolean;
+}
+
+export interface TaskFile {
+  id: string;
+  task_id: string;
+  file_name: string;
+  file_size: number;
+  file_type: string;
+  file_path: string;
+  uploaded_at: Date;
 }

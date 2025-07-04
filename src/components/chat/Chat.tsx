@@ -21,7 +21,7 @@ const Chat: React.FC = () => {
       try {
         // Load users
         const usersResult = await userService.getUsers();
-        if (usersResult.success) {
+        if (usersResult.success && 'data' in usersResult) {
           const mappedUsers = usersResult.data
             .filter((profile: any) => profile.id !== user?.id)
             .map((profile: any) => ({
@@ -67,7 +67,7 @@ const Chat: React.FC = () => {
         }
 
         const result = await chatService.getChatMessages(filters);
-        if (result.success) {
+        if (result.success && 'data' in result) {
           const mappedMessages = result.data.map((msg: any) => ({
             id: msg.id,
             senderId: msg.sender_id,
@@ -103,7 +103,7 @@ const Chat: React.FC = () => {
       };
 
       const result = await chatService.sendMessage(messageData);
-      if (result.success) {
+      if (result.success && 'data' in result) {
         const newMsg: ChatMessage = {
           id: result.data.id,
           senderId: result.data.sender_id,
@@ -121,11 +121,6 @@ const Chat: React.FC = () => {
     }
   };
 
-  const getUserName = (userId: string) => {
-    if (userId === user?.id) return user.name;
-    const foundUser = users.find(u => u.id === userId);
-    return foundUser?.name || 'Unknown User';
-  };
 
   if (loading) {
     return (
@@ -139,17 +134,17 @@ const Chat: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full flex flex-col">
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-6 h-[600px] flex flex-col">
+      <div className="flex justify-between items-center mb-6 sticky top-0 z-10 bg-white">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">ICE Communication Hub</h1>
           <p className="text-gray-600">Connect and collaborate with your team</p>
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-0">
         {/* Chat List */}
-        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="lg:col-span-1 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-col h-screen">
           <div className="flex space-x-2 mb-4">
             <button
               onClick={() => setChatType('direct')}
@@ -159,8 +154,7 @@ const Chat: React.FC = () => {
               Members
             </button>
           </div>
-
-          <div className="space-y-2">
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-2">
             {users.map((userItem) => (
               <button
                 key={userItem.id}
@@ -186,13 +180,12 @@ const Chat: React.FC = () => {
             ))}
           </div>
         </div>
-
         {/* Chat Window */}
-        <div className="lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col">
+        <div className="lg:col-span-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-col h-screen">
           {selectedUser ? (
             <>
               {/* Chat Header */}
-              <div className="p-4 border-b border-gray-200">
+              <div className="p-4 border-b border-gray-200 sticky top-0 z-10 bg-white">
                 <div className="flex items-center space-x-3">
                   <div className="h-8 w-8 bg-amber-200 rounded-full flex items-center justify-center">
                     <span className="text-sm font-medium text-amber-800">
@@ -207,9 +200,8 @@ const Chat: React.FC = () => {
                   </div>
                 </div>
               </div>
-
               {/* Messages */}
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div className="flex-1 p-4 overflow-y-auto min-h-0">
                 <div className="space-y-4">
                   {messages.map((message) => (
                     <div
@@ -235,7 +227,6 @@ const Chat: React.FC = () => {
                   <div ref={messagesEndRef} />
                 </div>
               </div>
-
               {/* Message Input */}
               <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200">
                 <div className="flex space-x-2">

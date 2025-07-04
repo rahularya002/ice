@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { authService } from '../../services/authService';
-import { LogIn, Eye, EyeOff, Shield, AlertCircle, UserPlus } from 'lucide-react';
+// import { authService } from '../../services/authService';
+import { LogIn, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
+  // const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [success] = useState('');
   const { login } = useAuth();
 
   console.log('🔐 Login component rendered');
@@ -33,33 +33,33 @@ const Login: React.FC = () => {
     setIsLoading(false);
   };
 
-  const handleCreateAdmin = async () => {
-    console.log('🔧 Creating admin user...');
+  // const handleCreateAdmin = async () => {
+  //   console.log('🔧 Creating admin user...');
     
-    setIsCreatingAdmin(true);
-    setError('');
-    setSuccess('');
+  //   setIsCreatingAdmin(true);
+  //   setError('');
+  //   setSuccess('');
 
-    try {
-      const result = await authService.createInitialAdmin();
-      console.log('📋 Admin creation result:', result);
+  //   try {
+  //     const result = await authService.createInitialAdmin();
+  //     console.log('📋 Admin creation result:', result);
       
-      if (result.success) {
-        console.log('✅ Admin user created successfully');
-        setSuccess('Admin user created successfully! You can now login with admin@ice.org.in / admin123');
-        setEmail('admin@ice.org.in');
-        setPassword('admin123');
-      } else {
-        console.error('❌ Admin creation failed:', result.error);
-        setError(result.error || 'Failed to create admin user');
-      }
-    } catch (error) {
-      console.error('❌ Unexpected error creating admin:', error);
-      setError('Failed to create admin user. Please try again.');
-    }
+  //     if (result.success) {
+  //       console.log('✅ Admin user created successfully');
+  //       setSuccess('Admin user created successfully! You can now login with admin@ice.org.in / admin123');
+  //       setEmail('admin@ice.org.in');
+  //       setPassword('admin123');
+  //     } else {
+  //       console.error('❌ Admin creation failed:', result.error);
+  //       setError(result.error || 'Failed to create admin user');
+  //     }
+  //   } catch (error) {
+  //     console.error('❌ Unexpected error creating admin:', error);
+  //     setError('Failed to create admin user. Please try again.');
+  //   }
 
-    setIsCreatingAdmin(false);
-  };
+  //   setIsCreatingAdmin(false);
+  // };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-red-50 flex items-center justify-center p-4">
@@ -75,13 +75,13 @@ const Login: React.FC = () => {
         </div>
 
         {/* Debug Info */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs">
+        {/* <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs">
           <p className="font-medium text-blue-900 mb-1">Debug Info:</p>
           <p className="text-blue-800">Environment: {import.meta.env.MODE}</p>
           <p className="text-blue-800">Supabase URL: {import.meta.env.VITE_SUPABASE_URL ? '✅ Set' : '❌ Missing'}</p>
           <p className="text-blue-800">Anon Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ Set' : '❌ Missing'}</p>
           <p className="text-blue-800">Service Key: {import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY ? '✅ Set' : '❌ Missing'}</p>
-        </div>
+        </div> */}
 
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8 mb-6">
@@ -172,7 +172,7 @@ const Login: React.FC = () => {
         </div>
 
         {/* Setup Admin Button */}
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
+        {/* <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6 mb-6">
           <div className="text-center">
             <UserPlus className="h-8 w-8 text-amber-600 mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">First Time Setup</h3>
@@ -194,7 +194,7 @@ const Login: React.FC = () => {
               )}
             </button>
           </div>
-        </div>
+        </div> */}
 
         {/* Info Box */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">

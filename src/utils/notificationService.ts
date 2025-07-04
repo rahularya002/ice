@@ -92,33 +92,32 @@ export const notificationService = {
     }
   },
 
-  // Create notification for project updates
-  createProjectUpdateNotification: (projectId: string, title: string, message: string, updatedByUser: User) => {
-    const projects = storage.getProjects();
-    const users = storage.getUsers();
-    const project = projects.find(p => p.id === projectId);
+  // // Create notification for project updates
+  // createProjectUpdateNotification: (projectId: string, title: string, message: string, updatedByUser: User) => {
+  //   const projects = storage.getProjects();
+  //   const project = projects.find(p => p.id === projectId);
 
-    if (project) {
-      // Notify all project members
-      const memberIds = [...project.memberIds, project.managerId];
+  //   if (project) {
+  //     // Notify all project members
+  //     const memberIds = [...project.memberIds, project.managerId];
       
-      memberIds.forEach(memberId => {
-        if (memberId !== updatedByUser.id) {
-          const notification: AppNotification = {
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-            userId: memberId,
-            title,
-            message,
-            type: 'project_update',
-            read: false,
-            createdAt: new Date(),
-          };
+  //     memberIds.forEach(memberId => {
+  //       if (memberId !== updatedByUser.id) {
+  //         const notification: AppNotification = {
+  //           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+  //           userId: memberId,
+  //           title,
+  //           message,
+  //           type: 'project_update',
+  //           read: false,
+  //           createdAt: new Date(),
+  //         };
 
-          storage.addNotification(notification);
-        }
-      });
-    }
-  },
+  //         storage.addNotification(notification);
+  //       }
+  //     });
+  //   }
+  // },
 
   // Request browser notification permission
   requestNotificationPermission: async () => {

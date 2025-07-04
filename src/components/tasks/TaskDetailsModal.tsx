@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, File, Download, MessageSquare, Clock, User, Calendar } from 'lucide-react';
 import { Task, User as UserType } from '../../types';
-import { storage } from '../../utils/storage';
+import { userService } from '../../services/userService';
 
 interface TaskDetailsModalProps {
   task: Task;
@@ -18,12 +18,22 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
 }) => {
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState<'details' | 'submissions' | 'comments'>('details');
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [showFullDescription, setShowFullDescription] = useState(false);
   
-  const users = storage.getUsers();
+  useEffect(() => {
+    async function fetchUsers() {
+      const result = await userService.getUsers();
+      if (result.success && 'data' in result && result.data) setUsers(result.data);
+    }
+    fetchUsers();
+  }, []);
 
   const getUserName = (userId: string) => {
     const user = users.find(u => u.id === userId);
-    return user?.name || 'Unknown User';
+    if (user) return user.name;
+    // Try to show the userId as fallback
+    return userId ? `User: ${userId}` : 'Unknown User';
   };
 
   const formatFileSize = (bytes: number) => {
@@ -60,6 +70,13 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // Debug: log attachments when modal renders
+  useEffect(() => {
+    if ((currentUser?.id === task.assignedTo || currentUser?.id === task.assignedBy || currentUser?.role === 'admin' || currentUser?.role === 'manager')) {
+      console.log('Task Attachments:', task.attachments);
+    }
+  }, [task.attachments, currentUser, task.assignedTo, task.assignedBy]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -116,8 +133,43 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               {/* Task Header */}
               <div>
                 <h4 className="text-xl font-semibold text-gray-900 mb-2">{task.title}</h4>
-                <p className="text-gray-600">{task.description}</p>
+                <p className="text-gray-600">
+                  {showFullDescription || task.description.length <= 200
+                    ? task.description
+                    : `${task.description.slice(0, 200)}...`}
+                  {task.description.length > 200 && (
+                    <button
+                      className="ml-2 text-blue-600 underline text-xs"
+                      onClick={() => setShowFullDescription((prev) => !prev)}
+                    >
+                      {showFullDescription ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
+                </p>
               </div>
+
+              {/* Attachments Section (Admin/Manager uploads) */}
+              {((currentUser?.id === task.assignedTo || currentUser?.id === task.assignedBy || currentUser?.role === 'admin' || currentUser?.role === 'manager')) && (
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">Task Attachments</p>
+                  {task.attachments && task.attachments.length > 0 ? (
+                    <ul className="space-y-2">
+                      {task.attachments.map((file) => (
+                        <li key={file.id} className="flex items-center space-x-2 bg-gray-50 rounded px-2 py-1">
+                          <File className="h-4 w-4 text-gray-500" />
+                          <span className="text-xs font-medium text-gray-900">{file.name}</span>
+                          <span className="text-xs text-gray-500">({(file.size / 1024).toFixed(1)} KB)</span>
+                          <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-xs flex items-center">
+                            <Download className="h-4 w-4 ml-1" /> Download
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <div className="text-gray-400 text-xs italic">No files attached</div>
+                  )}
+                </div>
+              )}
 
               {/* Task Metadata */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -199,7 +251,7 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                           Submitted by {getUserName(submission.submittedBy)}
                         </p>
                         <p className="text-sm text-gray-500">
-                          {submission.submittedAt.toLocaleString()}
+                          {submission.submittedAt ? submission.submittedAt.toLocaleString() : 'Unknown date'}
                         </p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
@@ -228,9 +280,13 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                                 <span className="text-sm text-gray-900">{file.name}</span>
                                 <span className="text-xs text-gray-500">({formatFileSize(file.size)})</span>
                               </div>
-                              <button className="text-blue-600 hover:text-blue-900 p-1">
-                                <Download className="h-4 w-4" />
-                              </button>
+                              {file.url ? (
+                                <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-900 p-1">
+                                  <Download className="h-4 w-4" />
+                                </a>
+                              ) : (
+                                <span className="text-xs text-red-500">No download URL: {file.url || 'N/A'}</span>
+                              )}
                             </div>
                           ))}
                         </div>

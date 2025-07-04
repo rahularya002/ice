@@ -1,12 +1,30 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
-import { User, Task } from '../../types';
+import { User, Task, SubmissionFile } from '../../types';
 
 interface AddTaskModalProps {
   onClose: () => void;
   onSubmit: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   users: User[];
   currentUser: User | null;
+}
+
+const CLOUDINARY_UPLOAD_PRESET = 'task-files';
+const CLOUDINARY_CLOUD_NAME = 'dom7v8fgf';
+
+async function uploadFileToCloudinary(file: File) {
+  const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) throw new Error('Cloudinary upload failed');
+  return await response.json();
 }
 
 const AddTaskModal: React.FC<AddTaskModalProps> = ({ 
@@ -26,9 +44,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     estimatedHours: '',
   });
 
+  const [attachments, setAttachments] = useState<SubmissionFile[]>([]);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
     const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       title: formData.title,
       description: formData.description,
@@ -40,13 +61,50 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
       actualHours: 0,
       submissions: [],
-      comments: []
+      comments: [],
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
-
     onSubmit(taskData);
   };
 
   const availableUsers = users.filter(u => u.role === 'employee' || u.role === 'project_manager');
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    const files = Array.from(e.target.files || []);
+    if (attachments.length + files.length > 2) {
+      setUploadError('You can only upload up to 2 files.');
+      return;
+    }
+    setUploading(true);
+    try {
+      const newFiles: SubmissionFile[] = [];
+      for (const file of files) {
+        console.log('Uploading file to Cloudinary:', file);
+        // Optionally: validate file size/type here
+        const result = await uploadFileToCloudinary(file);
+        console.log('Cloudinary upload result:', result);
+        newFiles.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: result.original_filename,
+          size: result.bytes,
+          type: result.format,
+          url: result.secure_url,
+          uploadedAt: new Date(),
+        });
+      }
+      setAttachments(prev => [...prev, ...newFiles]);
+      console.log('All uploaded files:', newFiles);
+    } catch (err) {
+      setUploadError('File upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => prev.filter(f => f.id !== id));
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -124,21 +182,23 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                value={formData.status}
-                onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
-              >
-                <option value="todo">To Do</option>
-                <option value="in_progress">In Progress</option>
-                <option value="review">Review</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
+            {currentUser?.role !== 'employee' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as Task['status'] })}
+                >
+                  <option value="todo">To Do</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -169,6 +229,34 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               />
             </div>
           </div>
+
+          {(currentUser?.role === 'admin' || currentUser?.role === 'manager') && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Attach File(s) (Optional, max 2)
+              </label>
+              <input
+                type="file"
+                multiple
+                accept=".doc,.docx,.pdf,.txt,.jpg,.jpeg,.png,.gif,.zip,.rar,.xlsx,.xls,.ppt,.pptx"
+                onChange={handleFileChange}
+                disabled={attachments.length >= 2 || uploading}
+              />
+              {uploadError && <div className="text-red-600 text-xs mt-1">{uploadError}</div>}
+              {uploading && <div className="text-blue-600 text-xs mt-1">Uploading...</div>}
+              {attachments.length > 0 && (
+                <ul className="mt-2 space-y-1">
+                  {attachments.map(file => (
+                    <li key={file.id} className="flex items-center justify-between bg-gray-50 rounded px-2 py-1">
+                      <span className="text-xs">{file.name}</span>
+                      <a href={file.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline ml-2">View</a>
+                      <button type="button" onClick={() => removeAttachment(file.id)} className="text-red-500 text-xs ml-2">Remove</button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
