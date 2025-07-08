@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, File, Download, MessageSquare, Clock, User, Calendar } from 'lucide-react';
+import { X, File, Download, MessageSquare, Clock, User, Calendar, Upload, AlertCircle, CheckCircle } from 'lucide-react';
 import { Task, User as UserType } from '../../types';
 import { userService } from '../../services/userService';
 
@@ -8,6 +8,16 @@ interface TaskDetailsModalProps {
   onClose: () => void;
   currentUser: UserType | null;
   onCommentAdd: (comment: string) => void;
+}
+
+// TEMP: Inline SubmissionFile type to fix linter error
+interface SubmissionFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  uploadedAt: Date;
 }
 
 const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({ 
@@ -20,7 +30,23 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   const [activeTab, setActiveTab] = useState<'details' | 'submissions' | 'comments'>('details');
   const [users, setUsers] = useState<UserType[]>([]);
   const [showFullDescription, setShowFullDescription] = useState(false);
+  // const [handoverUserId, setHandoverUserId] = useState<string>('');
+  // const [handoverFiles, setHandoverFiles] = useState<File[]>([]);
+  // const [handoverLoading, setHandoverLoading] = useState(false);
+  // const [handoverError, setHandoverError] = useState<string | null>(null);
+  // const [assistanceDescription, setAssistanceDescription] = useState('');
+  const [assistanceFiles, setAssistanceFiles] = useState<SubmissionFile[]>([]);
+  const [assistanceUploadStatus, setAssistanceUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [assistanceErrorMessage, setAssistanceErrorMessage] = useState('');
   
+  const allowedFileTypes = [
+    '.doc', '.docx', '.pdf', '.txt', '.jpg', '.jpeg', '.png', '.gif', 
+    '.zip', '.rar', '.xlsx', '.xls', '.ppt', '.pptx'
+  ];
+  const maxFileSize = 10 * 1024 * 1024; // 10MB
+  const CLOUDINARY_UPLOAD_PRESET = 'task-files';
+  const CLOUDINARY_CLOUD_NAME = 'dom7v8fgf';
+
   useEffect(() => {
     async function fetchUsers() {
       const result = await userService.getUsers();
@@ -77,6 +103,78 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
       console.log('Task Attachments:', task.attachments);
     }
   }, [task.attachments, currentUser, task.assignedTo, task.assignedBy]);
+
+  async function uploadFileToCloudinary(file: File) {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/upload`;
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) throw new Error('Cloudinary upload failed');
+    return await response.json();
+  }
+
+  const handleAssistanceFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    if (assistanceFiles.length + selectedFiles.length > 2) {
+      setAssistanceErrorMessage('You can only upload up to 2 files.');
+      return;
+    }
+    if (selectedFiles.length === 0) return;
+    setAssistanceUploadStatus('uploading');
+    setAssistanceErrorMessage('');
+    try {
+      const newFiles: SubmissionFile[] = [];
+      for (const file of selectedFiles) {
+        // Validate file size
+        if (file.size > maxFileSize) {
+          throw new Error(`File "${file.name}" is too large. Maximum size is 10MB.`);
+        }
+        // Validate file type
+        const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+        if (!allowedFileTypes.includes(fileExtension)) {
+          throw new Error(`File type "${fileExtension}" is not allowed.`);
+        }
+        const result = await uploadFileToCloudinary(file);
+        newFiles.push({
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          name: result.original_filename,
+          size: result.bytes,
+          type: result.format,
+          url: result.secure_url,
+          uploadedAt: new Date(),
+        });
+      }
+      setAssistanceFiles(prev => [...prev, ...newFiles]);
+      setAssistanceUploadStatus('success');
+      setTimeout(() => setAssistanceUploadStatus('idle'), 2000);
+    } catch (error: any) {
+      setAssistanceErrorMessage(error.message || 'Upload failed');
+      setAssistanceUploadStatus('error');
+      setTimeout(() => setAssistanceUploadStatus('idle'), 3000);
+    }
+    event.target.value = '';
+  };
+
+  const removeAssistanceFile = (fileId: string) => {
+    setAssistanceFiles(prev => prev.filter(f => f.id !== fileId));
+  };
+
+  const getAssistanceUploadStatusIcon = () => {
+    switch (assistanceUploadStatus) {
+      case 'uploading':
+        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>;
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <Upload className="h-4 w-4" />;
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { Department, User, Designation } from '../../types';
 import { designationService } from '../../services/designationService';
+import { useAuth } from '../../contexts/AuthContext';
+import { userService } from '../../services/userService';
 
 interface EditUserModalProps {
   user: User;
@@ -11,6 +13,7 @@ interface EditUserModalProps {
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, departments }) => {
+  const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     name: user.name,
     role: user.role,
@@ -22,6 +25,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
   const [customDesignation, setCustomDesignation] = useState('');
   const [customDesignationDescription, setCustomDesignationDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const [password, setPassword] = useState('');
 
   // Load designations from Supabase
   useEffect(() => {
@@ -88,9 +92,25 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
       }
     }
     
-    onSubmit(user.id, {
+    // Only allow admin/manager to change password for other users
+    if (
+      password &&
+      currentUser &&
+      (currentUser.role === 'admin' || currentUser.role === 'manager') &&
+      currentUser.id !== user.id
+    ) {
+      await userService.updateUserPassword(user.id, password);
+    }
+    
+    // Sanitize uuid fields
+    const sanitizedFormData = {
       ...formData,
-      designation: finalDesignation,
+      designation: formData.designation === '' ? undefined : formData.designation,
+      departmentId: formData.departmentId === '' ? undefined : formData.departmentId,
+    };
+    onSubmit(user.id, {
+      ...sanitizedFormData,
+      designation: finalDesignation === '' ? undefined : finalDesignation,
     });
     
     setLoading(false);
@@ -235,6 +255,24 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, 
               ))}
             </select>
           </div>
+
+          {/* Password field for admin/manager editing other users */}
+          {(currentUser && (currentUser.role === 'admin' || currentUser.role === 'manager') && currentUser.id !== user.id) && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                New Password (optional)
+              </label>
+              <input
+                type="password"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                placeholder="Set a new password for this user"
+              />
+              <p className="text-xs text-gray-500 mt-1">Leave blank to keep the current password. Only admins and managers can set a new password for employees.</p>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button

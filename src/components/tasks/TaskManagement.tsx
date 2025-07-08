@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { taskService } from '../../services/taskService';
 import { userService } from '../../services/userService';
+import { notificationService } from '../../services/notificationService';
 import { Task, User } from '../../types';
-import { Plus, Edit, Trash2, CheckSquare, Timer, Upload, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Timer, Upload, Eye } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import TimeTrackingModal from './TimeTrackingModal';
 import TaskSubmissionModal from './TaskSubmissionModal';
 import TaskDetailsModal from './TaskDetailsModal';
+import EditTaskModal from './EditTaskModal';
 
 const TaskManagement: React.FC = () => {
   const { user } = useAuth();
@@ -20,6 +22,9 @@ const TaskManagement: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'assigned' | 'created'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'tasks' | 'assistance'>('tasks');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editTask, setEditTask] = useState<Task | null>(null);
 
   // Load data from Supabase
   useEffect(() => {
@@ -128,7 +133,7 @@ const TaskManagement: React.FC = () => {
     
     try {
       const result = await taskService.createTask(taskData);
-      if (result.success) {
+      if (result.success && 'data' in result && result.data) {
         console.log('✅ Task created successfully');
         setIsAddModalOpen(false);
         
@@ -173,6 +178,16 @@ const TaskManagement: React.FC = () => {
             }))
           }));
           setTasks(mappedTasks);
+        }
+        // Send notification to assigned user
+        const assignedUser = users.find(u => u.id === taskData.assignedTo);
+        const assignedByUser = users.find(u => u.id === taskData.assignedBy);
+        if (assignedUser && assignedByUser) {
+          await notificationService.createTaskAssignedNotification(
+            result.data,
+            assignedUser,
+            assignedByUser
+          );
         }
       } else {
         // Fix: result may not have 'error' property, so check for it safely
@@ -374,140 +389,142 @@ const TaskManagement: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-0 z-10">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Task
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Assigned To
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Submissions
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Due Date
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {userTasks.map((task) => (
-                <tr key={task.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                      <div className="text-sm text-gray-500 truncate" style={{ maxWidth: 400 }}>
-                        {task.description.length > 80 ? `${task.description.slice(0, 80)}...` : task.description}
+      {activeTab === 'tasks' && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 sticky top-0 z-10">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Task
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Assigned To
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Priority
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Submissions
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Due Date
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {userTasks.map((task) => (
+                  <tr key={task.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                        <div className="text-sm text-gray-500 truncate" style={{ maxWidth: 400 }}>
+                          {task.description.length > 80 ? `${task.description.slice(0, 80)}...` : task.description}
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getUserName(task.assignedTo)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {user?.role === 'employee' ? (
-                      <span className={`text-xs font-medium rounded-full px-2 py-1 ${getStatusColor(task.status)}`}>
-                        {task.status.replace('_', ' ')}
-                      </span>
-                    ) : (
-                      <select
-                        value={task.status}
-                        onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
-                        className={`text-xs font-medium rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-amber-500 ${getStatusColor(task.status)}`}
-                        disabled={task.assignedTo !== user?.id && user?.role !== 'admin' && user?.role !== 'manager'}
-                      >
-                        <option value="todo">To Do</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="review">Review</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-                      {task.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <div className="flex items-center space-x-2">
-                      {task.submissions && task.submissions.length > 0 ? (
-                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                          {task.submissions.length} submitted
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getUserName(task.assignedTo)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user?.role === 'employee' ? (
+                        <span className={`text-xs font-medium rounded-full px-2 py-1 ${getStatusColor(task.status)}`}>
+                          {task.status.replace('_', ' ')}
                         </span>
                       ) : (
-                        <span className="text-gray-400">No submissions</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => setDetailsTask(task)}
-                        className="text-gray-600 hover:text-gray-900 p-1"
-                        title="View Details"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      {task.assignedTo === user?.id && (
-                        <>
-                          <button
-                            onClick={() => setTimeTrackingTask(task)}
-                            className="text-green-600 hover:text-green-900 p-1"
-                            title="Log Time"
-                          >
-                            <Timer className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setSubmissionTask(task)}
-                            className="text-amber-600 hover:text-amber-900 p-1"
-                            title="Submit Work"
-                          >
-                            <Upload className="h-4 w-4" />
-                          </button>
-                        </>
-                      )}
-                      {user?.role !== 'employee' && (
-                        <button className="text-amber-600 hover:text-amber-900 p-1" title="Edit Task">
-                          <Edit className="h-4 w-4" />
-                        </button>
-                      )}
-                      {canDeleteTask(task) && (
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="text-red-600 hover:text-red-900 p-1"
-                          title="Delete Task"
+                        <select
+                          value={task.status}
+                          onChange={(e) => handleStatusChange(task.id, e.target.value as Task['status'])}
+                          className={`text-xs font-medium rounded-full px-2 py-1 border-0 focus:ring-2 focus:ring-amber-500 ${getStatusColor(task.status)}`}
+                          disabled={task.assignedTo !== user?.id && user?.role !== 'admin' && user?.role !== 'manager'}
                         >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                          <option value="todo">To Do</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="review">Review</option>
+                          <option value="completed">Completed</option>
+                        </select>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {userTasks.length === 0 && (
-        <div className="text-center py-12">
-          <CheckSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No tasks found</p>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
+                        {task.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <div className="flex items-center space-x-2">
+                        {task.submissions && task.submissions.length > 0 ? (
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                            {task.submissions.length} submitted
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">No submissions</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex items-center justify-end space-x-2">
+                        <button
+                          onClick={() => setDetailsTask(task)}
+                          className="text-gray-600 hover:text-gray-900 p-1"
+                          title="View Details"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        {task.assignedTo === user?.id && (
+                          <>
+                            <button
+                              onClick={() => setTimeTrackingTask(task)}
+                              className="text-green-600 hover:text-green-900 p-1"
+                              title="Log Time"
+                            >
+                              <Timer className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setSubmissionTask(task)}
+                              className="text-amber-600 hover:text-amber-900 p-1"
+                              title="Submit Work"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
+                        {user?.role !== 'employee' && (
+                          <button
+                            className="text-amber-600 hover:text-amber-900 p-1"
+                            title="Edit Task"
+                            onClick={() => {  
+                              setEditTask(task);
+                              setIsEditModalOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                        )}
+                        {canDeleteTask(task) && (
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-red-600 hover:text-red-900 p-1"
+                            title="Delete Task"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -690,6 +707,76 @@ const TaskManagement: React.FC = () => {
               setDetailsTask(mappedTasks.find((t: typeof mappedTasks[number]) => t.id === detailsTask.id) || null);
             }
           }}
+        />
+      )}
+
+      {isEditModalOpen && editTask && (
+        <EditTaskModal
+          task={editTask}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditTask(null);
+          }}
+          onSubmit={async (updatedTaskData) => {
+            if (!editTask) return;
+            setError(null);
+            try {
+              const result = await taskService.updateTask(editTask.id, updatedTaskData);
+              if (result.success) {
+                // Reload tasks
+                const tasksResult = await taskService.getTasks();
+                if (tasksResult.success && 'data' in tasksResult) {
+                  const mappedTasks = tasksResult.data.map((task: any) => ({
+                    id: task.id,
+                    title: task.title,
+                    description: task.description,
+                    assignedTo: task.assigned_to,
+                    assignedBy: task.assigned_by,
+                    status: task.status,
+                    priority: task.priority,
+                    dueDate: task.due_date ? new Date(task.due_date) : undefined,
+                    estimatedHours: task.estimated_hours,
+                    actualHours: task.actual_hours || 0,
+                    createdAt: new Date(task.created_at),
+                    updatedAt: new Date(task.updated_at),
+                    submissions: (task.task_submissions || []).map((submission: any) => ({
+                      ...submission,
+                      submittedBy: submission.submitted_by,
+                      submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                      files: (submission.task_submission_files || []).map((file: any) => ({
+                        id: file.id,
+                        name: file.file_name,
+                        size: file.file_size,
+                        type: file.file_type,
+                        url: file.file_path,
+                        uploadedAt: file.uploaded_at,
+                      })),
+                    })),
+                    comments: task.task_comments || [],
+                    attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                      id: file.id,
+                      name: file.file_name,
+                      size: file.file_size,
+                      type: file.file_type,
+                      url: file.file_path,
+                      uploadedAt: file.uploaded_at,
+                      uploadedBy: file.uploaded_by,
+                    }))
+                  }));
+                  setTasks(mappedTasks);
+                }
+                setIsEditModalOpen(false);
+                setEditTask(null);
+              } else {
+                const errorMsg = 'error' in result && result.error ? result.error : 'Failed to update task';
+                setError(errorMsg);
+              }
+            } catch (error) {
+              setError('Failed to update task');
+            }
+          }}
+          users={users}
+          currentUser={user}
         />
       )}
     </div>

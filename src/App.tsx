@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { notificationService } from './utils/notificationService';
+import { notificationService } from './services/notificationService';
 import Login from './components/auth/Login';
 import Dashboard from './components/dashboard/Dashboard';
 import Sidebar from './components/dashboard/Sidebar';

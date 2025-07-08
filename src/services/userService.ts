@@ -48,12 +48,17 @@ export const userService = {
       if (updates.designation !== undefined) updateData.designation = updates.designation;
       if (updates.departmentId !== undefined) updateData.department_id = updates.departmentId;
 
+      // Prevent empty update
+      if (Object.keys(updateData).length === 0) {
+        return handleSupabaseError(new Error('No valid fields to update.'));
+      }
+
       const { data, error } = await supabase
         .from('profiles')
         .update(updateData)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) {
         return handleSupabaseError(error);
@@ -99,6 +104,22 @@ export const userService = {
       }
 
       return handleSupabaseSuccess(data);
+    } catch (error) {
+      return handleSupabaseError(error);
+    }
+  },
+
+  // Update user password (admin only)
+  async updateUserPassword(id: string, newPassword: string) {
+    try {
+      if (!supabaseAdmin) {
+        return handleSupabaseError(new Error('Admin access not available'));
+      }
+      const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { password: newPassword });
+      if (error) {
+        return handleSupabaseError(error);
+      }
+      return handleSupabaseSuccess(null);
     } catch (error) {
       return handleSupabaseError(error);
     }

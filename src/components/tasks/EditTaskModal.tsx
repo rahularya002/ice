@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { User, Task, SubmissionFile } from '../../types';
 
-interface AddTaskModalProps {
+interface EditTaskModalProps {
+  task: Task;
   onClose: () => void;
   onSubmit: (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => void;
   users: User[];
@@ -27,24 +28,25 @@ async function uploadFileToCloudinary(file: File) {
   return await response.json();
 }
 
-const AddTaskModal: React.FC<AddTaskModalProps> = ({ 
+const EditTaskModal: React.FC<EditTaskModalProps> = ({ 
+  task,
   onClose, 
   onSubmit, 
   users,
   currentUser 
 }) => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    assignedTo: '',
-    assignedBy: currentUser?.id || '',
-    status: 'todo' as Task['status'],
-    priority: 'medium' as Task['priority'],
-    dueDate: '',
-    estimatedHours: '',
+    title: task.title,
+    description: task.description,
+    assignedTo: task.assignedTo,
+    assignedBy: task.assignedBy, // not editable
+    status: task.status,
+    priority: task.priority,
+    dueDate: task.dueDate ? new Date(task.dueDate).toISOString().slice(0, 10) : '',
+    estimatedHours: task.estimatedHours ? String(task.estimatedHours) : '',
   });
 
-  const [attachments, setAttachments] = useState<SubmissionFile[]>([]);
+  const [attachments, setAttachments] = useState<SubmissionFile[]>(task.attachments || []);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
@@ -59,9 +61,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
       priority: formData.priority,
       dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
       estimatedHours: formData.estimatedHours ? parseFloat(formData.estimatedHours) : undefined,
-      actualHours: 0,
-      submissions: [],
-      comments: [],
+      actualHours: task.actualHours || 0,
+      submissions: task.submissions || [],
+      comments: task.comments || [],
       attachments: attachments.length > 0 ? attachments : undefined,
     };
     onSubmit(taskData);
@@ -80,10 +82,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     try {
       const newFiles: SubmissionFile[] = [];
       for (const file of files) {
-        console.log('Uploading file to Cloudinary:', file);
-        // Optionally: validate file size/type here
         const result = await uploadFileToCloudinary(file);
-        console.log('Cloudinary upload result:', result);
         newFiles.push({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           name: result.original_filename,
@@ -94,7 +93,6 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
         });
       }
       setAttachments(prev => [...prev, ...newFiles]);
-      console.log('All uploaded files:', newFiles);
     } catch (err) {
       setUploadError('File upload failed.');
     } finally {
@@ -110,7 +108,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Add New Task</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Edit Task</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -270,7 +268,7 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
               type="submit"
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
             >
-              Add Task
+              Save Changes
             </button>
           </div>
         </form>
@@ -279,4 +277,4 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   );
 };
 
-export default AddTaskModal;
+export default EditTaskModal; 

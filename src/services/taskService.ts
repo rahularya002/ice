@@ -1,6 +1,16 @@
 import { supabase, handleSupabaseError, handleSupabaseSuccess } from '../lib/supabase';
 import { Task } from '../types';
 
+// Add SubmissionFile type inline for compatibility
+interface SubmissionFile {
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+  url: string;
+  uploadedAt: Date;
+}
+
 export const taskService = {
   // Get all tasks
   async getTasks() {
@@ -212,6 +222,39 @@ export const taskService = {
       }
 
       return handleSupabaseSuccess(submission);
+    } catch (error) {
+      return handleSupabaseError(error);
+    }
+  },
+
+  // Handover task to another employee (with file metadata)
+  async handoverTask(taskId: string, newAssigneeId: string, files: SubmissionFile[], handedOverById: string) {
+    try {
+      // 1. Update the task's assigned_to
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({ assigned_to: newAssigneeId })
+        .eq('id', taskId);
+      if (updateError) return handleSupabaseError(updateError);
+
+      // 2. Insert file metadata into task_files
+      let uploadedFiles = [];
+      if (files.length > 0) {
+        uploadedFiles = files.map(file => ({
+          task_id: taskId,
+          file_name: file.name,
+          file_size: file.size,
+          file_type: file.type,
+          file_path: file.url,
+          uploaded_by: handedOverById,
+          uploaded_at: file.uploadedAt.toISOString(),
+        }));
+        const { error: filesError } = await supabase
+          .from('task_files')
+          .insert(uploadedFiles);
+        if (filesError) return handleSupabaseError(filesError);
+      }
+      return handleSupabaseSuccess({ success: true });
     } catch (error) {
       return handleSupabaseError(error);
     }
