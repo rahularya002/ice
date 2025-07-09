@@ -88,7 +88,11 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
           id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
           name: result.original_filename,
           size: result.bytes,
-          type: result.format,
+          type: file.type && file.type.trim() !== ''
+          ? file.type
+          : (result.format && result.format.trim() !== ''
+              ? result.format
+              : 'application/octet-stream'),
           url: result.secure_url,
           uploadedAt: new Date(),
         });
