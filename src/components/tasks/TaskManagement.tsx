@@ -4,7 +4,7 @@ import { taskService } from '../../services/taskService';
 import { userService } from '../../services/userService';
 import { notificationService } from '../../services/notificationService';
 import { Task, User } from '../../types';
-import { Plus, Edit, Trash2, Timer, Upload, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Timer, Upload, Eye, RotateCcw } from 'lucide-react';
 import AddTaskModal from './AddTaskModal';
 import TimeTrackingModal from './TimeTrackingModal';
 import TaskSubmissionModal from './TaskSubmissionModal';
@@ -25,6 +25,10 @@ const TaskManagement: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'tasks' | 'assistance'>('tasks');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
+  const [requestChangeTask, setRequestChangeTask] = useState<Task | null>(null);
+  const [requestChangeComment, setRequestChangeComment] = useState('');
+  const [requestChangeStatus, setRequestChangeStatus] = useState(true); // true = set to in_progress
+  const [requestChangeError, setRequestChangeError] = useState('');
 
   // Load data from Supabase
   useEffect(() => {
@@ -65,7 +69,13 @@ const TaskManagement: React.FC = () => {
                 uploadedAt: file.uploaded_at,
               })),
             })),
-            comments: task.task_comments || [],
+            comments: (task.task_comments || []).map((c: any) => ({
+              id: c.id,
+              taskId: c.task_id,
+              userId: c.user_id,
+              comment: c.comment,
+              createdAt: c.created_at ? new Date(c.created_at) : new Date(),
+            })),
             attachments: (task.attachments || task.task_files || []).map((file: any) => ({
               id: file.id,
               name: file.file_name,
@@ -509,6 +519,20 @@ const TaskManagement: React.FC = () => {
                             <Edit className="h-4 w-4" />
                           </button>
                         )}
+                        {user && (user.role === 'admin' || user.role === 'manager') && task.status !== 'in_progress' && task.status !== 'todo' && (
+                          <button
+                            onClick={() => {
+                              setRequestChangeTask(task);
+                              setRequestChangeComment('');
+                              setRequestChangeStatus(true);
+                              setRequestChangeError('');
+                            }}
+                            className="text-blue-600 hover:text-blue-900 p-1"
+                            title="Request Changes"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </button>
+                        )}
                         {canDeleteTask(task) && (
                           <button
                             onClick={() => handleDeleteTask(task.id)}
@@ -778,6 +802,144 @@ const TaskManagement: React.FC = () => {
           users={users}
           currentUser={user}
         />
+      )}
+
+      {/* Request Changes Modal */}
+      {requestChangeTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">Request Changes for: {requestChangeTask.title}</h3>
+              <button
+                onClick={() => setRequestChangeTask(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <span className="text-xl">&times;</span>
+              </button>
+            </div>
+            <form
+              onSubmit={async e => {
+                e.preventDefault();
+                if (!requestChangeComment.trim()) {
+                  setRequestChangeError('Comment is required');
+                  return;
+                }
+                setRequestChangeError('');
+                if (!requestChangeTask || !user) return;
+                try {
+                  // 1. Add comment (mark as change request)
+                  await taskService.addTaskComment(
+                    requestChangeTask.id,
+                    user.id,
+                    `[Change Requested] ${requestChangeComment.trim()}`
+                  );
+                  // 2. Update status if checked
+                  if (requestChangeStatus && requestChangeTask.status !== 'in_progress') {
+                    await taskService.updateTask(requestChangeTask.id, { status: 'in_progress' });
+                  }
+                  // 3. Notify assigned employee
+                  const assignedUser = users.find(u => u.id === requestChangeTask.assignedTo);
+                  if (assignedUser) {
+                    await notificationService.createGeneralNotification(
+                      assignedUser.id,
+                      'Task Change Requested',
+                      `${user.name} requested changes for task: "${requestChangeTask.title}". Please review the feedback.`
+                    );
+                  }
+                  // 4. Reload tasks
+                  const tasksResult = await taskService.getTasks();
+                  if (tasksResult.success && 'data' in tasksResult) {
+                    const mappedTasks = tasksResult.data.map((task: any) => ({
+                      id: task.id,
+                      title: task.title,
+                      description: task.description,
+                      assignedTo: task.assigned_to,
+                      assignedBy: task.assigned_by,
+                      status: task.status,
+                      priority: task.priority,
+                      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+                      estimatedHours: task.estimated_hours,
+                      actualHours: task.actual_hours || 0,
+                      createdAt: new Date(task.created_at),
+                      updatedAt: new Date(task.updated_at),
+                      submissions: (task.task_submissions || []).map((submission: any) => ({
+                        ...submission,
+                        submittedBy: submission.submitted_by,
+                        submittedAt: submission.submitted_at ? new Date(submission.submitted_at) : undefined,
+                        files: (submission.task_submission_files || []).map((file: any) => ({
+                          id: file.id,
+                          name: file.file_name,
+                          size: file.file_size,
+                          type: file.file_type,
+                          url: file.file_path,
+                          uploadedAt: file.uploaded_at,
+                        })),
+                      })),
+                      comments: task.task_comments || [],
+                      attachments: (task.attachments || task.task_files || []).map((file: any) => ({
+                        id: file.id,
+                        name: file.file_name,
+                        size: file.file_size,
+                        type: file.file_type,
+                        url: file.file_path,
+                        uploadedAt: file.uploaded_at,
+                        uploadedBy: file.uploaded_by,
+                      }))
+                    }));
+                    setTasks(mappedTasks);
+                  }
+                  setRequestChangeTask(null);
+                  setRequestChangeComment('');
+                  setRequestChangeStatus(true);
+                } catch (err) {
+                  setRequestChangeError('Failed to request changes. Please try again.');
+                }
+              }}
+              className="p-6 space-y-4"
+            >
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Feedback/Comment <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  value={requestChangeComment}
+                  onChange={e => setRequestChangeComment(e.target.value)}
+                  required
+                  placeholder="Describe what needs to be changed or improved..."
+                />
+                {requestChangeError && <div className="text-red-600 text-xs mt-1">{requestChangeError}</div>}
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="set-in-progress"
+                  checked={requestChangeStatus}
+                  onChange={e => setRequestChangeStatus(e.target.checked)}
+                />
+                <label htmlFor="set-in-progress" className="text-sm text-gray-700">
+                  Set status to <span className="font-semibold">In Progress</span>
+                </label>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setRequestChangeTask(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+                >
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

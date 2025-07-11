@@ -17,12 +17,17 @@ import {
   ArrowDown
 } from 'lucide-react';
 
-const Dashboard: React.FC = () => {
+
+interface DashboardProps {
+  setActiveTab: (tab: string) => void;
+}
+const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
   const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
   // Load data from Supabase
   useEffect(() => {
@@ -217,8 +222,8 @@ const Dashboard: React.FC = () => {
             <h1 className="text-3xl font-bold text-gray-900">
               Welcome back, {user?.name}!
             </h1>
-            <p className="text-gray-600 mt-1">
-              {user?.designation || user?.role.replace('_', ' ')} • The Institute of Civil Engineers, India
+            <p className="text-gray-600 mt-1">.
+              {user?.designation || user?.role.replace('_', ' ')} • The Institute of Civil Engineers
             </p>
           </div>
           <div className="flex items-center space-x-4">
@@ -288,10 +293,53 @@ const Dashboard: React.FC = () => {
             {recentTasks.length > 0 ? (
               <div className="space-y-4">
                 {recentTasks.map((task: any) => (
-                  <div key={task.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
+                  <div
+                    key={task.id}
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
+                    onClick={() => {
+                      if (user?.role === 'employee') {
+                        setActiveTab('tasks');
+                      }
+                    }}
+                  >
                     <div className="flex-1">
                       <h4 className="font-medium text-gray-900 mb-1">{task.title}</h4>
-                      <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                      <p
+                        className={`text-sm text-gray-600 mb-2${expandedTaskId !== task.id ? ' truncate' : ''}`}
+                        style={
+                          expandedTaskId !== task.id
+                            ? { maxWidth: 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }
+                            : { maxWidth: 400 }
+                        }
+                      >
+                        {expandedTaskId === task.id
+                          ? task.description
+                          : task.description.length > 80
+                            ? `${task.description.slice(0, 80)}...`
+                            : task.description}
+                      </p>
+                      {task.description.length > 80 && expandedTaskId !== task.id && (
+                        <button
+                          className="text-xs text-blue-600 hover:underline"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setExpandedTaskId(task.id);
+                          }}
+                        >
+                          Read more
+                        </button>
+                      )}
+                      {expandedTaskId === task.id && (
+                        <button
+                          className="text-xs text-blue-600 hover:underline ml-2"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setExpandedTaskId(null);
+                          }}
+                        >
+                          Show less
+                        </button>
+                      )}
                       <div className="flex items-center space-x-3">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTaskStatusColor(task.status)}`}>
                           {task.status.replace('_', ' ')}

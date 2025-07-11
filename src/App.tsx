@@ -33,7 +33,7 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
       case 'users':
         return <UserManagement />;
       case 'departments':
@@ -45,7 +45,7 @@ const AppContent: React.FC = () => {
       case 'chat':
         return <Chat />;
       default:
-        return <Dashboard />;
+        return <Dashboard setActiveTab={setActiveTab} />;
     }
   };
 

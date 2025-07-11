@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { User, Task, SubmissionFile } from '../../types';
+import Select from 'react-select';
 
 interface AddTaskModalProps {
   onClose: () => void;
@@ -47,9 +48,28 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   const [attachments, setAttachments] = useState<SubmissionFile[]>([]);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  // Get today's date in YYYY-MM-DD format
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setDateError(null);
+    if (formData.dueDate) {
+      const selectedDate = new Date(formData.dueDate);
+      // Set time to 00:00:00 for both dates for accurate comparison
+      selectedDate.setHours(0,0,0,0);
+      today.setHours(0,0,0,0);
+      if (selectedDate < today) {
+        setDateError('Due date cannot be in the past.');
+        return;
+      }
+    }
     const taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
       title: formData.title,
       description: formData.description,
@@ -68,6 +88,12 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   };
 
   const availableUsers = users.filter(u => u.role === 'employee' || u.role === 'project_manager' || u.role === 'manager');
+
+  // Prepare options for react-select
+  const userOptions = availableUsers.map(user => ({
+    value: user.id,
+    label: `${user.name} (${user.role.replace('_', ' ')})`,
+  }));
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     setUploadError(null);
@@ -111,8 +137,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Add New Task</h3>
           <button
@@ -155,19 +187,14 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Assign To
             </label>
-            <select
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.assignedTo}
-              onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-            >
-              <option value="">Select a user</option>
-              {availableUsers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name} ({user.role.replace('_', ' ')})
-                </option>
-              ))}
-            </select>
+            <Select
+              options={userOptions}
+              value={userOptions.find(option => option.value === formData.assignedTo) || null}
+              onChange={option => setFormData({ ...formData, assignedTo: option ? option.value : '' })}
+              placeholder="Search and select a user"
+              isClearable
+              classNamePrefix="react-select"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -215,7 +242,9 @@ const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 value={formData.dueDate}
                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+                min={todayStr}
               />
+              {dateError && <div className="text-red-600 text-xs mt-1">{dateError}</div>}
             </div>
 
             <div>

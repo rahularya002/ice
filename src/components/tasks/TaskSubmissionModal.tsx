@@ -102,11 +102,11 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (files.length === 0) {
-      setErrorMessage('Please upload at least one file');
+    if (!description.trim()) {
+      setErrorMessage('Work description is required');
       return;
     }
-
+    setErrorMessage('');
     onSubmit(description, files);
   };
 
@@ -124,8 +124,14 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-2">
             <Upload className="h-5 w-5 text-blue-600" />
@@ -149,7 +155,7 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
             {/* File Upload Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Upload Files <span className="text-red-500">*</span>
+                Upload Files (Optional)
               </label>
               
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
@@ -224,7 +230,7 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
             {/* Description Section */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Work Description (Optional)
+                Work Description <span className="text-red-500">*</span>
               </label>
               <textarea
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -232,6 +238,7 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the work you've completed, any challenges faced, or additional notes..."
+                required
               />
             </div>
 
@@ -257,7 +264,7 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
               </button>
               <button
                 type="submit"
-                disabled={files.length === 0 || uploadStatus === 'uploading'}
+                disabled={!description.trim() || uploadStatus === 'uploading'}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors duration-200"
               >
                 Submit Work

@@ -57,5 +57,22 @@ export const chatService = {
     } catch (error) {
       return handleSupabaseError(error);
     }
+  },
+
+  // Stub for marking messages as read
+  async markMessagesAsRead(userId: string, otherUserId: string) {
+    // Mark all messages from otherUserId to userId as read
+    try {
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ read: true })
+        .match({ sender_id: otherUserId, receiver_id: userId, read: false });
+      if (error) {
+        return handleSupabaseError(error);
+      }
+      return { success: true };
+    } catch (error) {
+      return handleSupabaseError(error);
+    }
   }
 };

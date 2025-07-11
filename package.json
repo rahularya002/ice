@@ -18,6 +18,8 @@
     "mongoose": "^8.16.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-router-dom": "^7.6.3",
+    "react-select": "^5.10.1",
     "socket.io-client": "^4.7.4"
   },
   "devDependencies": {

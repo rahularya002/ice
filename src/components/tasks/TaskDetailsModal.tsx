@@ -177,8 +177,14 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Task Details</h3>
           <button
@@ -442,24 +448,35 @@ const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
               {/* Comments List */}
               {task.comments && task.comments.length > 0 ? (
                 <div className="space-y-4">
-                  {task.comments.map((comment) => (
-                    <div key={comment.id} className="flex items-start space-x-3">
-                      <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
-                        <span className="text-sm font-medium text-gray-600">
-                          {getUserName(comment.userId).charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-50 rounded-lg p-3">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="font-medium text-gray-900">{getUserName(comment.userId)}</p>
-                            <p className="text-xs text-gray-500">{comment.createdAt.toLocaleString()}</p>
+                  {task.comments.map((comment) => {
+                    const isChangeRequest = comment.comment.startsWith('[Change Requested]');
+                    const displayComment = isChangeRequest ? comment.comment.replace(/^\[Change Requested\]\s*/, '') : comment.comment;
+                    return (
+                      <div key={comment.id} className="flex items-start space-x-3">
+                        <div className="h-8 w-8 bg-gray-200 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-medium text-gray-600">
+                            {getUserName(comment.userId).charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <div className={`rounded-lg p-3 ${isChangeRequest ? 'bg-yellow-50 border-l-4 border-yellow-400' : 'bg-gray-50'}`}>
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-medium text-gray-900 flex items-center gap-2">
+                                {getUserName(comment.userId)}
+                                {isChangeRequest && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-yellow-200 text-yellow-800 ml-2">
+                                    Change Requested
+                                  </span>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-500">{comment.createdAt.toLocaleString()}</p>
+                            </div>
+                            <p className="text-gray-700">{displayComment}</p>
                           </div>
-                          <p className="text-gray-700">{comment.comment}</p>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8">

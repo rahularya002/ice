@@ -84,8 +84,14 @@ const DepartmentDetailsModal: React.FC<DepartmentDetailsModalProps> = ({ departm
   }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between p-6 border-b border-gray-200 sticky top-0 z-10 bg-white">
           <div className="flex items-center space-x-3">
             <div className="p-2 bg-amber-100 rounded-lg">

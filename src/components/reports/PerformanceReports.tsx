@@ -5,6 +5,7 @@ import { taskService } from '../../services/taskService';
 import { timeEntryService } from '../../services/timeEntryService';
 import { User, Task, TimeEntry } from '../../types';
 import { BarChart3, Clock, Target, Award, Users } from 'lucide-react';
+import Select from 'react-select';
 
 interface PerformanceMetrics {
   userId: string;
@@ -29,6 +30,12 @@ const PerformanceReports: React.FC = () => {
 
   const canViewAllReports = user?.role === 'admin' || user?.role === 'manager';
   const availableUsers = canViewAllReports ? users : users.filter(u => u.id === user?.id);
+
+  // Prepare options for react-select
+  const userOptions = availableUsers.map(user => ({
+    value: user.id,
+    label: user.name,
+  }));
 
   // Load data from Supabase
   useEffect(() => {
@@ -298,18 +305,14 @@ const PerformanceReports: React.FC = () => {
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Select User (Optional)
           </label>
-          <select
-            value={selectedUser}
-            onChange={(e) => setSelectedUser(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All Users</option>
-            {availableUsers.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
+          <Select
+            options={[{ value: '', label: 'All Users' }, ...userOptions]}
+            value={userOptions.find(option => option.value === selectedUser) || { value: '', label: 'All Users' }}
+            onChange={option => setSelectedUser(option ? option.value : '')}
+            placeholder="Search and select a user"
+            isClearable
+            classNamePrefix="react-select"
+          />
         </div>
       </div>
 

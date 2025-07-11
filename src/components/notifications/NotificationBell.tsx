@@ -26,7 +26,7 @@ const NotificationBell: React.FC = () => {
       updateUnreadCount();
       
       // Poll for new notifications every 30 seconds
-      const interval = setInterval(updateUnreadCount, 30000);
+      const interval = setInterval(updateUnreadCount, 10000);
       
       return () => clearInterval(interval);
     }
