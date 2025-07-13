@@ -102,6 +102,10 @@ const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({ task, onClose
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (uploadStatus === 'uploading') {
+      setErrorMessage('Please wait for file upload to complete before submitting.');
+      return;
+    }
     if (!description.trim()) {
       setErrorMessage('Work description is required');
       return;

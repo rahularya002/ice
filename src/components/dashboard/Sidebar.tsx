@@ -7,7 +7,8 @@ import {
   CheckSquare, 
   MessageCircle, 
   LogOut,
-  BarChart3
+  BarChart3,
+  Briefcase
 } from 'lucide-react';
 import NotificationBell from '../notifications/NotificationBell';
 
@@ -23,6 +24,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'project_manager', 'employee'] },
     { id: 'users', label: 'Members', icon: Users, roles: ['admin', 'manager'] },
     { id: 'departments', label: 'Departments', icon: Building, roles: ['admin', 'manager', 'project_manager'] },
+    { id: 'projects', label: 'Projects', icon: Briefcase, roles: ['admin', 'manager', 'project_manager', 'employee'] },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare, roles: ['admin', 'manager', 'project_manager', 'employee'] },
     { id: 'reports', label: 'Analytics', icon: BarChart3, roles: ['admin', 'manager', 'project_manager', 'employee'] },
     { id: 'chat', label: 'Communication', icon: MessageCircle, roles: ['admin', 'manager', 'project_manager', 'employee'] },

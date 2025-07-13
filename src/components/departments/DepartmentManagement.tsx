@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { departmentService } from '../../services/departmentService';
 import { userService } from '../../services/userService';
 import { Department, User } from '../../types';
-import { Plus, Edit, Trash2, Building, Users, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Building, Users, Eye, Search } from 'lucide-react';
 import AddDepartmentModal from './AddDepartmentModal';
 import EditDepartmentModal from './EditDepartmentModal';
 import DepartmentDetailsModal from './DepartmentDetailsModal';
@@ -17,6 +17,7 @@ const DepartmentManagement: React.FC = () => {
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   if (user?.role !== 'admin' && user?.role !== 'manager' && user?.role !== 'project_manager') {
     return (
@@ -218,6 +219,22 @@ const DepartmentManagement: React.FC = () => {
         )}
       </div>
 
+      {/* Search Bar (styled like Members section) */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-6 sticky top-0 z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="relative w-full sm:w-80">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search departments..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="pl-9 md:pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent w-full text-sm md:text-base"
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
@@ -227,7 +244,14 @@ const DepartmentManagement: React.FC = () => {
 
       {/* Departments Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-        {departments.map((department) => {
+        {(departments.filter(department => {
+          const q = searchQuery.trim().toLowerCase();
+          if (!q) return true;
+          return (
+            department.name.toLowerCase().includes(q) ||
+            (department.description && department.description.toLowerCase().includes(q))
+          );
+        })).map((department) => {
           const memberCount = getDepartmentMemberCount(department.id);
           return (
             <div key={department.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 hover:shadow-md transition-shadow duration-200 flex flex-col">

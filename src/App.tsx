@@ -10,6 +10,7 @@ import TaskManagement from './components/tasks/TaskManagement';
 import PerformanceReports from './components/reports/PerformanceReports';
 import Chat from './components/chat/Chat';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ProjectManagement from './components/projects/ProjectManagement';
 
 const AppContent: React.FC = () => {
   const { user, loading } = useAuth();
@@ -38,6 +39,8 @@ const AppContent: React.FC = () => {
         return <UserManagement />;
       case 'departments':
         return <DepartmentManagement />;
+      case 'projects':
+        return <ProjectManagement />;
       case 'tasks':
         return <TaskManagement />;
       case 'reports':
