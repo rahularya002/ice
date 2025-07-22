@@ -2,30 +2,25 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { User } from '../../types';
 
-interface AddProjectModalProps {
+interface EditProjectModalProps {
   onClose: () => void;
   onSubmit: (projectData: any) => void;
   users: User[];
+  initialProject: any;
 }
 
-const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, users }) => {
+const EditProjectModal: React.FC<EditProjectModalProps> = ({ onClose, onSubmit, users, initialProject }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    managerId: '',
-    startDate: '',
-    endDate: '',
-    memberIds: [] as string[],
-    status: 'unconfirmed',
+    name: initialProject.name || '',
+    description: initialProject.description || '',
+    managerId: initialProject.manager_id || '',
+    startDate: initialProject.start_date || '',
+    endDate: initialProject.end_date || '',
+    memberIds: initialProject.memberIds || [],
+    status: initialProject.status || 'unconfirmed',
+    id: initialProject.id,
   });
   const [loading, setLoading] = useState(false);
-
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayStr = `${yyyy}-${mm}-${dd}`;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +39,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, us
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Add New Project</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Edit Project</h3>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
@@ -104,7 +99,6 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, us
                 onChange={e => setFormData({ ...formData, startDate: e.target.value })}
                 disabled={loading}
                 required
-                min={todayStr}
               />
             </div>
             <div className="flex-1">
@@ -115,7 +109,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, us
                 value={formData.endDate}
                 onChange={e => setFormData({ ...formData, endDate: e.target.value })}
                 disabled={loading}
-                min={formData.startDate || todayStr}
+                min={formData.startDate}
               />
             </div>
           </div>
@@ -168,7 +162,7 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, us
               className="px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition-colors duration-200"
               disabled={loading}
             >
-              Add Project
+              Update Project
             </button>
           </div>
         </form>
@@ -177,4 +171,4 @@ const AddProjectModal: React.FC<AddProjectModalProps> = ({ onClose, onSubmit, us
   );
 };
 
-export default AddProjectModal; 
+export default EditProjectModal; 

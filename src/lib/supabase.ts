@@ -6,16 +6,9 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Missing Supabase environment variables');
-  console.error('VITE_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
   throw new Error('Missing Supabase environment variables. Please check your .env file.');
 }
 
-console.log('🔧 Initializing Supabase client...');
-console.log('📍 Supabase URL:', supabaseUrl);
-console.log('🔑 Anon Key:', supabaseAnonKey ? '✅ Configured' : '❌ Missing');
-console.log('🔐 Service Key:', supabaseServiceKey ? '✅ Configured' : '❌ Missing');
 
 // Create the main client with anon key
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {

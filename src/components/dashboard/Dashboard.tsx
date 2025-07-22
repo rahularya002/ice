@@ -3,7 +3,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import { userService } from '../../services/userService';
 import { departmentService } from '../../services/departmentService';
 import { taskService } from '../../services/taskService';
-import { User, Department, Task } from '../../types';
+import { projectService } from '../../services/projectService';
+import { Meeting } from '../../types';
+import { meetingService } from '../../services/meetingService';
+import AddMeetingModal from '../meetings/AddMeetingModal';
+import MeetingList from '../meetings/MeetingList';
+import EditMeetingModal from '../meetings/EditMeetingModal';
 import { 
   Users, 
   Building, 
@@ -20,14 +25,19 @@ import {
 
 interface DashboardProps {
   setActiveTab: (tab: string) => void;
+  activeTab: string;
 }
-const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
+const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, activeTab }) => {
   const { user } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [meetingModalOpen, setMeetingModalOpen] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
 
   // Load data from Supabase
   useEffect(() => {
@@ -66,6 +76,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
         // Load tasks
         const tasksResult = await taskService.getTasks();
         if (tasksResult.success && 'data' in tasksResult) {
+          console.log('Raw tasks from backend:', tasksResult.data); // <-- Debug log
           const mappedTasks = tasksResult.data.map((task: any) => ({
             id: task.id,
             title: task.title,
@@ -84,6 +95,24 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
           }));
           setTasks(mappedTasks);
         }
+
+        // Load projects
+        if (user) {
+          const projectsResult = await projectService.getProjectsForUser(user.id);
+          if (projectsResult.success && 'data' in projectsResult) {
+            const mappedProjects = projectsResult.data.map((project: any) => ({
+              id: project.id,
+              name: project.name,
+              description: project.description,
+              managerId: project.manager_id,
+              startDate: project.start_date,
+              endDate: project.end_date,
+              status: project.status,
+              createdAt: new Date(project.created_at)
+            }));
+            setProjects(mappedProjects);
+          }
+        }
       } catch (error) {
         console.error('❌ Error loading dashboard data:', error);
       } finally {
@@ -98,10 +127,28 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     }
   }, [user]);
 
+  // Load meetings
+  useEffect(() => {
+    if (user) {
+      meetingService.getMeetings().then(res => {
+        if (res.success && 'data' in res) {
+          const mappedMeetings = (res.data || []).map((meeting: any) => ({
+            ...meeting,
+            createdBy: meeting.created_by || meeting.createdBy,
+            agendaFile: meeting.agenda_file || undefined,
+          }));
+          setMeetings(mappedMeetings);
+        }
+      });
+    }
+  }, [user]);
+
   // Filter tasks for current user
-  const userTasks = tasks.filter(task => 
-    task.assignedTo === user?.id || task.assignedBy === user?.id
-  );
+  const userTasks = (user?.role === 'admin' || user?.role === 'manager')
+    ? tasks
+    : tasks.filter(task => 
+        task.assignedTo === user?.id || task.assignedBy === user?.id
+      );
 
   const completedTasks = userTasks.filter((t: any) => t.status === 'completed').length;
   const pendingTasks = userTasks.filter((t: any) => t.status !== 'completed').length;
@@ -185,6 +232,8 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     .sort((a: any, b: any) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
     .slice(0, 5);
 
+  const recentProjects = projects.slice(0, 5);
+
   const getTaskStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return 'bg-green-100 text-green-800';
@@ -202,6 +251,16 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
     return diffDays;
   };
 
+  const handleDeleteMeeting = async (meeting: any) => {
+    if (!window.confirm('Are you sure you want to delete this meeting?')) return;
+    const { error } = await meetingService.deleteMeeting(meeting.id);
+    if (!error) {
+      setMeetings(meetings.filter(m => m.id !== meeting.id));
+    } else {
+      alert('Failed to delete meeting.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 bg-gray-50 min-h-screen">
@@ -209,6 +268,56 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
           <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-600 rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (activeTab === 'meetings') {
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 mt-8">
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-indigo-100 p-2 rounded-lg">
+                <Calendar className="h-5 w-5 text-indigo-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Meetings</h3>
+            </div>
+            <button
+              className="px-3 py-1 rounded bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-sm shadow"
+              onClick={() => setMeetingModalOpen(true)}
+            >
+              Add Meeting
+            </button>
+          </div>
+          <div className="p-6">
+            <MeetingList
+              meetings={meetings}
+              users={users}
+              currentUser={user || undefined}
+              onDeleteMeeting={handleDeleteMeeting}
+              onEditMeeting={meeting => setEditingMeeting(meeting)}
+            />
+          </div>
+        </div>
+        <AddMeetingModal
+          isOpen={meetingModalOpen}
+          onClose={() => setMeetingModalOpen(false)}
+          onMeetingAdded={meeting => setMeetings([meeting, ...meetings])}
+          currentUserId={user?.id || ''}
+        />
+        {editingMeeting && (
+          <EditMeetingModal
+            isOpen={!!editingMeeting}
+            onClose={() => setEditingMeeting(null)}
+            meeting={editingMeeting}
+            onMeetingUpdated={updated => {
+              setMeetings(meetings => meetings.map(m => m.id === updated.id ? updated : m));
+              setEditingMeeting(null);
+            }}
+            currentUserId={user?.id || ''}
+          />
+        )}
       </div>
     );
   }
@@ -297,9 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                     key={task.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 cursor-pointer"
                     onClick={() => {
-                      if (user?.role === 'employee') {
-                        setActiveTab('tasks');
-                      }
+                      setActiveTab('tasks');
                     }}
                   >
                     <div className="flex-1">
@@ -417,6 +524,44 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab }) => {
                 <div className="text-center py-8">
                   <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-3" />
                   <p className="text-gray-500 text-sm">No upcoming deadlines</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Recent Projects */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center space-x-3">
+                <div className="bg-blue-100 p-2 rounded-lg">
+                  <Building className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              {recentProjects.length > 0 ? (
+                <div className="space-y-3">
+                  {recentProjects.map((project: any) => (
+                    <div key={project.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium text-gray-900 text-sm">{project.name}</p>
+                        <p className="text-xs text-gray-600 mt-1">
+                          {project.startDate ? `Started: ${new Date(project.startDate).toLocaleDateString()}` : ''}
+                        </p>
+                      </div>
+                      <div className="ml-3">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${project.status === 'confirmed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}> 
+                          {project.status ? project.status.charAt(0).toUpperCase() + project.status.slice(1) : 'Unconfirmed'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Building className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-500 text-sm">No recent projects</p>
                 </div>
               )}
             </div>

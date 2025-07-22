@@ -1,4 +1,6 @@
 import { supabase, handleSupabaseError, handleSupabaseSuccess } from '../lib/supabase';
+import { notificationService } from './notificationService';
+import { userService } from './userService';
 
 export const projectService = {
   // Create a new project and assign members
@@ -113,6 +115,34 @@ export const projectService = {
         .select()
         .single();
       if (error) return handleSupabaseError(error);
+
+      // Notify project manager if submitter is not the manager
+      const projectRes = await supabase
+        .from('projects')
+        .select('id, name, manager_id')
+        .eq('id', entryData.projectId)
+        .single();
+      if (projectRes.data && projectRes.data.manager_id && projectRes.data.manager_id !== entryData.userId) {
+        // Get submitter info
+        let submitterName = 'A team member';
+        const submitterRes = await userService.getUserById(entryData.userId);
+        if (
+          submitterRes &&
+          typeof submitterRes === 'object' &&
+          'success' in submitterRes &&
+          submitterRes.success === true &&
+          'data' in submitterRes &&
+          submitterRes.data &&
+          submitterRes.data.name
+        ) {
+          submitterName = submitterRes.data.name;
+        }
+        await notificationService.createGeneralNotification(
+          projectRes.data.manager_id,
+          'New Project Follow-up',
+          `${submitterName} submitted a follow-up for project "${projectRes.data.name}".`
+        );
+      }
       return handleSupabaseSuccess(data);
     } catch (error) {
       return handleSupabaseError(error);
@@ -126,7 +156,7 @@ export const projectService = {
         .from('project_daily_entries')
         .select('*')
         .eq('project_id', projectId)
-        .order('date', { ascending: false });
+        .order('created_at', { ascending: false });
       if (error) return handleSupabaseError(error);
       return handleSupabaseSuccess(data);
     } catch (error) {
@@ -145,6 +175,69 @@ export const projectService = {
         .single();
       if (error) return handleSupabaseError(error);
       return handleSupabaseSuccess(data);
+    } catch (error) {
+      return handleSupabaseError(error);
+    }
+  },
+
+  // Update project details and members
+  async updateProject({ id, name, description, managerId, startDate, endDate, memberIds, status }: {
+    id: string;
+    name: string;
+    description: string;
+    managerId: string;
+    startDate: string;
+    endDate?: string;
+    memberIds: string[];
+    status: string;
+  }) {
+    try {
+      // Update project row
+      const { data: updatedProject, error: projectError } = await supabase
+        .from('projects')
+        .update({
+          name,
+          description,
+          manager_id: managerId,
+          start_date: startDate,
+          end_date: endDate || null,
+          status,
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      if (projectError) return handleSupabaseError(projectError);
+
+      // Update project members: remove all, then add current
+      // Remove all current members
+      const { error: removeError } = await supabase
+        .from('project_members')
+        .delete()
+        .eq('project_id', id);
+      if (removeError) console.warn('Could not remove old project members:', removeError);
+      // Add new members
+      if (memberIds && memberIds.length > 0) {
+        const memberRows = memberIds.map(userId => ({ project_id: id, user_id: userId }));
+        const { error: membersError } = await supabase
+          .from('project_members')
+          .insert(memberRows);
+        if (membersError) console.warn('Could not add project members:', membersError);
+      }
+      return handleSupabaseSuccess(updatedProject);
+    } catch (error) {
+      return handleSupabaseError(error);
+    }
+  },
+
+  // Delete a project by id
+  async deleteProject(id: string) {
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .delete()
+        .eq('id', id);
+      if (error) return handleSupabaseError(error);
+      return handleSupabaseSuccess(null);
     } catch (error) {
       return handleSupabaseError(error);
     }

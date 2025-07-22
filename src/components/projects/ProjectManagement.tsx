@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Plus } from 'lucide-react';
 import AddProjectModal from './AddProjectModal';
 import ProjectDetailsModal from './ProjectDetailsModal';
+import EditProjectModal from './EditProjectModal';
+import { Pencil } from 'lucide-react';
 import { userService } from '../../services/userService';
 import { projectService } from '../../services/projectService';
 import { User } from '../../types';
@@ -11,6 +13,8 @@ const ProjectManagement: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'upcoming' | 'current'>('current');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState<any | null>(null);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +104,34 @@ const ProjectManagement: React.FC = () => {
     }
   };
 
+  const handleEditProjectSubmit = async (updatedProjectData: any) => {
+    setIsEditModalOpen(false);
+    setProjectToEdit(null);
+    setLoading(true);
+    setError(null);
+    try {
+      console.log('Updating project with data:', updatedProjectData);
+      const result = await projectService.updateProject(updatedProjectData);
+      console.log('Update project API result:', result);
+      if (result.success) {
+        await refreshProjects();
+      } else if ('error' in result && result.error) {
+        setError(result.error.message || 'Failed to update project');
+        console.error('Error updating project:', result.error);
+      }
+    } catch (err: any) {
+      setError('Failed to update project');
+      console.error('Exception in handleEditProjectSubmit:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditProject = (project: any) => {
+    setProjectToEdit(project);
+    setIsEditModalOpen(true);
+  };
+
   return (
     <div className="p-4 md:p-6 bg-gray-50 min-h-screen">
       {/* Header */}
@@ -177,7 +209,16 @@ const ProjectManagement: React.FC = () => {
                         {project.description}
                       </p>
                     </div>
-                    <div className="ml-2 flex-shrink-0">
+                    <div className="ml-2 flex-shrink-0 flex flex-col items-end gap-2">
+                      {canAddProject && (
+                        <button
+                          className="text-amber-600 hover:text-amber-800 p-1 rounded-full"
+                          title="Edit Project"
+                          onClick={e => { e.stopPropagation(); handleEditProject(project); }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                      )}
                       {project.status === 'confirmed' ? (
                         <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs font-medium">Confirmed</span>
                       ) : (
@@ -250,6 +291,14 @@ const ProjectManagement: React.FC = () => {
           onClose={() => setSelectedProject(null)}
           refreshProjects={refreshProjects}
           currentUserId={user?.id || ''}
+        />
+      )}
+      {canAddProject && isEditModalOpen && projectToEdit && (
+        <EditProjectModal
+          onClose={() => { setIsEditModalOpen(false); setProjectToEdit(null); }}
+          onSubmit={handleEditProjectSubmit}
+          users={users}
+          initialProject={projectToEdit}
         />
       )}
     </div>

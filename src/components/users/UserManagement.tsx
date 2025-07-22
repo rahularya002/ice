@@ -199,24 +199,10 @@ const UserManagement: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const canEditUser = (targetUser: User) => {
-    if (user?.role === 'admin') return true;
-    if (user?.role === 'manager' && targetUser.role !== 'admin') return true;
-    return false;
-  };
-
-  const canDeleteUser = (targetUser: User) => {
-    // Can't delete yourself
-    if (targetUser.id === user?.id) return false;
-    
-    // Admins can delete anyone (except themselves)
-    if (user?.role === 'admin') return true;
-    
-    // Managers can delete employees and project managers (but not other admins or managers)
-    if (user?.role === 'manager' && (targetUser.role === 'employee' || targetUser.role === 'project_manager')) return true;
-    
-    return false;
-  };
+  // Update permission checks
+  const canAddUser = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'project_manager';
+  const canEditUser = (targetUser: User) => user?.role === 'admin';
+  const canDeleteUser = (targetUser: User) => user?.role === 'admin' && targetUser.id !== user?.id;
 
   if (loading) {
     return (
@@ -237,13 +223,15 @@ const UserManagement: React.FC = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Member Management</h1>
           <p className="text-gray-600 mt-1">Manage system members and their roles</p>
         </div>
-        <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg text-sm md:text-base"
-        >
-          <Plus className="h-4 w-4 md:h-5 md:w-5" />
-          <span>Add Member</span>
-        </button>
+        {canAddUser && (
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg text-sm md:text-base"
+          >
+            <Plus className="h-4 w-4 md:h-5 md:w-5" />
+            <span>Add Member</span>
+          </button>
+        )}
       </div>
 
       {/* Error Message */}

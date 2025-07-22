@@ -129,3 +129,15 @@ export interface TaskFile {
   file_path: string;
   uploaded_at: Date;
 }
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description?: string;
+  date: string; // ISO date string (YYYY-MM-DD)
+  time: string; // 24h time string (HH:mm)
+  participants: string[]; // user IDs
+  createdBy: string; // user ID
+  createdAt: Date;
+  agendaFile?: SubmissionFile; // Optional agenda file
+}

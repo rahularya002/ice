@@ -33,6 +33,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const isMember = project.memberIds?.includes(currentUserId);
+  const isManager = currentUserId === project.manager_id;
   const [entries, setEntries] = useState<DailyEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [entryError, setEntryError] = useState<string | null>(null);
@@ -40,6 +41,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
   const [status, setStatus] = useState(project.status || 'unconfirmed');
   const [statusLoading, setStatusLoading] = useState(false);
   const canEditStatus = user && (user.role === 'admin' || user.role === 'manager' || user.role === 'project_manager');
+  const canDeleteProject = user && user.role === 'admin';
 
   // Fetch entries on open
   useEffect(() => {
@@ -161,6 +163,17 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!window.confirm('Are you sure you want to delete this project? This action cannot be undone.')) return;
+    const result = await projectService.deleteProject(project.id);
+    if (result.success) {
+      if (refreshProjects) await refreshProjects();
+      onClose();
+    } else if ('error' in result && result.error) {
+      alert(result.error.message || 'Failed to delete project');
+    }
+  };
+
   const manager = users.find(u => u.id === project.manager_id);
   const members = users.filter(u => project.memberIds?.includes(u.id));
 
@@ -182,9 +195,20 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h3 className="text-lg font-semibold text-gray-900">Project Details</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {canDeleteProject && (
+              <button
+                onClick={handleDeleteProject}
+                className="text-red-500 hover:text-red-700 border border-red-200 bg-red-50 rounded-lg px-3 py-1 text-xs font-semibold transition-colors"
+                title="Delete Project"
+              >
+                Delete
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="p-6 space-y-4">
           <div>
@@ -234,27 +258,31 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
             {loading ? (
               <div className="text-gray-400 text-sm mb-2">Loading entries...</div>
             ) : (
-              entries.map((entry: any) => {
-                const user = users.find(u => u.id === entry.user_id);
-                return (
-                  <div key={entry.id} className="bg-gray-50 rounded-lg p-3 flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium text-amber-800 text-xs">{user?.name || 'Unknown'}</span>
-                      <span className="text-xs text-gray-400">{entry.date}</span>
-                    </div>
-                    <div className="text-sm text-gray-800">{entry.text}</div>
-                    {entry.file_url && (
-                      <div className="mt-1 flex items-center gap-2 text-xs text-blue-700">
-                        <FileIcon className="h-4 w-4" />
-                        <a href={entry.file_url} target="_blank" rel="noopener noreferrer" className="underline">
-                          {entry.file_name}
-                        </a>
-                        <span className="text-gray-400">{entry.file_size ? `(${(entry.file_size / 1024).toFixed(1)} KB)` : ''}</span>
+              <div className="space-y-4">
+                {entries.map((entry: any) => {
+                  const user = users.find(u => u.id === entry.user_id);
+                  return (
+                    <div key={entry.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-amber-800 text-sm">{user?.name || 'Unknown'}</span>
+                        <span className="text-xs text-gray-400">
+                          {entry.created_at ? new Date(entry.created_at).toLocaleString() : entry.date}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                );
-              })
+                      <div className="text-gray-800 text-sm mb-1">{entry.text}</div>
+                      {entry.file_url && (
+                        <div className="mt-1 flex items-center gap-2 text-xs text-blue-700">
+                          <FileIcon className="h-4 w-4" />
+                          <a href={entry.file_url} target="_blank" rel="noopener noreferrer" className="underline">
+                            {entry.file_name}
+                          </a>
+                          <span className="text-gray-400">{entry.file_size ? `(${(entry.file_size / 1024).toFixed(1)} KB)` : ''}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             )}
             {entryError && (
               <div className="flex items-center space-x-2 text-red-600 text-xs mt-1">
@@ -262,7 +290,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
                 <span>{entryError}</span>
               </div>
             )}
-            {isMember && (
+            {(isMember || isManager) && (
               <form onSubmit={handleAddEntry} className="mt-4 flex flex-col gap-2">
                 <div className="flex gap-2">
                   <input

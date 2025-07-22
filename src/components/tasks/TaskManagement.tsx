@@ -124,18 +124,18 @@ const TaskManagement: React.FC = () => {
   }, []);
 
   // Filter tasks based on user role
-  const userTasks = tasks.filter(task => {
-    if (user?.role === 'admin' || user?.role === 'manager') return true;
-    
-    switch (filter) {
-      case 'assigned':
-        return task.assignedTo === user?.id;
-      case 'created':
-        return task.assignedBy === user?.id;
-      default:
-        return task.assignedTo === user?.id || task.assignedBy === user?.id;
-    }
-  });
+  const userTasks = (user?.role === 'admin' || user?.role === 'manager')
+    ? tasks
+    : tasks.filter(task => {
+        switch (filter) {
+          case 'assigned':
+            return task.assignedTo === user?.id;
+          case 'created':
+            return task.assignedBy === user?.id;
+          default:
+            return task.assignedTo === user?.id || task.assignedBy === user?.id;
+        }
+      });
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     console.log('📝 Creating new task:', taskData.title);
