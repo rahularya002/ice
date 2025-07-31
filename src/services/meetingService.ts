@@ -32,22 +32,6 @@ export const meetingService = {
     return { success: true, data: data?.[0] };
   },
 
-  async updateMeeting(id: string, updates: Partial<Omit<Meeting, 'id' | 'createdAt'>>) {
-    // Map camelCase to snake_case for DB
-    const dbUpdates: any = { ...updates };
-    if (updates.createdBy) dbUpdates.created_by = updates.createdBy;
-    if (updates.agendaFile !== undefined) dbUpdates.agenda_file = updates.agendaFile;
-    delete dbUpdates.createdBy;
-    delete dbUpdates.agendaFile;
-    const { data, error } = await supabase
-      .from('meetings')
-      .update(dbUpdates)
-      .eq('id', id)
-      .select();
-    if (error) return { success: false, error };
-    return { success: true, data: data?.[0] };
-  },
-
   async deleteMeeting(id: string) {
     const { error } = await supabase
       .from('meetings')

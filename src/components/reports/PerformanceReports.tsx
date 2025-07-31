@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { userService } from '../../services/userService';
 import { taskService } from '../../services/taskService';
 import { timeEntryService } from '../../services/timeEntryService';
@@ -19,7 +19,7 @@ interface PerformanceMetrics {
 }
 
 const PerformanceReports: React.FC = () => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [selectedPeriod, setSelectedPeriod] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM format
   const [selectedUser, setSelectedUser] = useState<string>('');
   const [metrics, setMetrics] = useState<PerformanceMetrics[]>([]);

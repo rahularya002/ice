@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 // import { authService } from '../../services/authService';
 import { LogIn, Eye, EyeOff, Shield, AlertCircle } from 'lucide-react';
 
@@ -11,7 +11,7 @@ const Login: React.FC = () => {
   // const [isCreatingAdmin, setIsCreatingAdmin] = useState(false);
   const [error, setError] = useState('');
   const [success] = useState('');
-  const { login } = useAuth();
+  const login = useAuthStore((state) => state.login);
 
   console.log('🔐 Login component rendered');
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { departmentService } from '../../services/departmentService';
 import { userService } from '../../services/userService';
 import { Department, User } from '../../types';
@@ -9,7 +9,7 @@ import EditDepartmentModal from './EditDepartmentModal';
 import DepartmentDetailsModal from './DepartmentDetailsModal';
 
 const DepartmentManagement: React.FC = () => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

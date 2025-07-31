@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
 import { Department, User, Designation } from '../../types';
 import { designationService } from '../../services/designationService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { userService } from '../../services/userService';
 
 interface EditUserModalProps {
@@ -13,7 +13,7 @@ interface EditUserModalProps {
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onSubmit, departments }) => {
-  const { user: currentUser } = useAuth();
+  const currentUser = useAuthStore((state) => state.user);
   const [formData, setFormData] = useState({
     name: user.name,
     role: user.role,

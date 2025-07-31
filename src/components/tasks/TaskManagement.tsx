@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { taskService } from '../../services/taskService';
 import { userService } from '../../services/userService';
 import { notificationService } from '../../services/notificationService';
@@ -12,14 +12,14 @@ import TaskDetailsModal from './TaskDetailsModal';
 import EditTaskModal from './EditTaskModal';
 
 const TaskManagement: React.FC = () => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [timeTrackingTask, setTimeTrackingTask] = useState<Task | null>(null);
   const [submissionTask, setSubmissionTask] = useState<Task | null>(null);
   const [detailsTask, setDetailsTask] = useState<Task | null>(null);
-  const [filter, setFilter] = useState<'all' | 'assigned' | 'created'>('all');
+  const [filter, setFilter] = useState<'all' | 'assigned' | 'created'>('created');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'tasks' | 'assistance'>('tasks');
@@ -123,19 +123,28 @@ const TaskManagement: React.FC = () => {
     loadData();
   }, []);
 
+  // Set default filter to 'created' for admin users
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      setFilter('created');
+    }
+  }, [user]);
+
   // Filter tasks based on user role
-  const userTasks = (user?.role === 'admin' || user?.role === 'manager')
-    ? tasks
-    : tasks.filter(task => {
-        switch (filter) {
-          case 'assigned':
-            return task.assignedTo === user?.id;
-          case 'created':
-            return task.assignedBy === user?.id;
-          default:
-            return task.assignedTo === user?.id || task.assignedBy === user?.id;
+  const userTasks = tasks.filter(task => {
+    switch (filter) {
+      case 'assigned':
+        return task.assignedTo === user?.id;
+      case 'created':
+        return task.assignedBy === user?.id;
+      default:
+        // 'all'
+        if (user?.role === 'admin' || user?.role === 'manager') {
+          return true; // show all for admin/manager
         }
-      });
+        return task.assignedTo === user?.id || task.assignedBy === user?.id;
+    }
+  });
 
   const handleAddTask = async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
     console.log('📝 Creating new task:', taskData.title);
@@ -371,12 +380,12 @@ const TaskManagement: React.FC = () => {
       <div className="mb-6">
         <div className="flex space-x-2">
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => setFilter('created')}
             className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-              filter === 'all' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              filter === 'created' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            All Tasks
+            Created by me
           </button>
           <button
             onClick={() => setFilter('assigned')}
@@ -388,12 +397,12 @@ const TaskManagement: React.FC = () => {
           </button>
           {user?.role !== 'employee' && (
             <button
-              onClick={() => setFilter('created')}
+              onClick={() => setFilter('all')}
               className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                filter === 'created' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                filter === 'all' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
-              Created by Me
+              All tasks
             </button>
           )}
         </div>
@@ -430,7 +439,11 @@ const TaskManagement: React.FC = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {userTasks.map((task) => (
-                  <tr key={task.id} className="hover:bg-gray-50">
+                  <tr
+                    key={task.id}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setDetailsTask(task)}
+                  >
                     <td className="px-6 py-4">
                       <div>
                         <div className="text-sm font-medium text-gray-900">{task.title}</div>
@@ -483,7 +496,7 @@ const TaskManagement: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <div className="flex items-center justify-end space-x-2">
                         <button
-                          onClick={() => setDetailsTask(task)}
+                          onClick={e => { e.stopPropagation(); setDetailsTask(task); }}
                           className="text-gray-600 hover:text-gray-900 p-1"
                           title="View Details"
                         >
@@ -492,14 +505,14 @@ const TaskManagement: React.FC = () => {
                         {task.assignedTo === user?.id && (
                           <>
                             <button
-                              onClick={() => setTimeTrackingTask(task)}
+                              onClick={e => { e.stopPropagation(); setTimeTrackingTask(task); }}
                               className="text-green-600 hover:text-green-900 p-1"
                               title="Log Time"
                             >
                               <Timer className="h-4 w-4" />
                             </button>
                             <button
-                              onClick={() => setSubmissionTask(task)}
+                              onClick={e => { e.stopPropagation(); setSubmissionTask(task); }}
                               className="text-amber-600 hover:text-amber-900 p-1"
                               title="Submit Work"
                             >
@@ -511,17 +524,15 @@ const TaskManagement: React.FC = () => {
                           <button
                             className="text-amber-600 hover:text-amber-900 p-1"
                             title="Edit Task"
-                            onClick={() => {  
-                              setEditTask(task);
-                              setIsEditModalOpen(true);
-                            }}
+                            onClick={e => { e.stopPropagation(); setEditTask(task); setIsEditModalOpen(true); }}
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                         )}
                         {user && (user.role === 'admin' || user.role === 'manager') && task.status !== 'in_progress' && task.status !== 'todo' && (
                           <button
-                            onClick={() => {
+                            onClick={e => {
+                              e.stopPropagation();
                               setRequestChangeTask(task);
                               setRequestChangeComment('');
                               setRequestChangeStatus(true);
@@ -535,7 +546,7 @@ const TaskManagement: React.FC = () => {
                         )}
                         {canDeleteTask(task) && (
                           <button
-                            onClick={() => handleDeleteTask(task.id)}
+                            onClick={e => { e.stopPropagation(); handleDeleteTask(task.id); }}
                             className="text-red-600 hover:text-red-900 p-1"
                             title="Delete Task"
                           >

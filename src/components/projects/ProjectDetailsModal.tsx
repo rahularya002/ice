@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { Upload, CheckCircle, AlertCircle, File as FileIcon } from 'lucide-react';
 import { User } from '../../types';
 import { projectService } from '../../services/projectService';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 
 interface DailyEntry {
   id: string;
@@ -37,7 +37,7 @@ const ProjectDetailsModal: React.FC<ProjectDetailsModalProps> = ({ project, user
   const [entries, setEntries] = useState<DailyEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [entryError, setEntryError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [status, setStatus] = useState(project.status || 'unconfirmed');
   const [statusLoading, setStatusLoading] = useState(false);
   const canEditStatus = user && (user.role === 'admin' || user.role === 'manager' || user.role === 'project_manager');

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { notificationService } from '../../services/notificationService';
 import { Bell } from 'lucide-react';
 import NotificationCenter from './NotificationCenter';
 
 const NotificationBell: React.FC = () => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
 

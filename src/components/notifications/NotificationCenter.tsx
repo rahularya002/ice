@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 import { notificationService } from '../../services/notificationService';
 import { Notification as AppNotification } from '../../types';
 import { Bell, X, Check, Clock, User, CheckSquare, AlertCircle } from 'lucide-react';
@@ -10,7 +10,7 @@ interface NotificationCenterProps {
 }
 
 const NotificationCenter: React.FC<NotificationCenterProps> = ({ isOpen, onClose }) => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(false);
 

@@ -7,10 +7,10 @@ import { Pencil } from 'lucide-react';
 import { userService } from '../../services/userService';
 import { projectService } from '../../services/projectService';
 import { User } from '../../types';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuthStore } from '../../stores/authStore';
 
 const ProjectManagement: React.FC = () => {
-  const { user } = useAuth();
+  const user = useAuthStore((state) => state.user);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'current'>('current');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
